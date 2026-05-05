@@ -28,3 +28,7 @@ sCmd = "cmd /c cd /d """ & sProjectDir & """ && " & _
 
 ' 第二个参数 0 = 隐藏窗口，第三个参数 False = 不等待
 oShell.Run sCmd, 0, False
+
+' 第二个参数 0 = 隐藏窗口，第三个参数 False = 不等待
+Set objShell = CreateObject("WScript.Shell")
+objShell.Run "cmd /c python backend/server.py", 0, False

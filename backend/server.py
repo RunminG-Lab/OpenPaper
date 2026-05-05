@@ -16,18 +16,26 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-PDF_DIR = "papers"  # 监控目录
-BUILD_SCRIPT = "build.py"  # 构建脚本
-METADATA_FILE = "metadata.json"
-RECYCLE_DIR = ".recycle_bin"
-SPEEDREAD_CACHE_DIR = ".speedread_cache"
+# 确保 WORKSPACE_ROOT 始终指向仓库根目录（即 backend/ 的上一级）
+# 如果脚本在 backend/ 目录下，dirname(__file__) 是 backend，再上一级才是仓库根目录
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+if os.path.basename(_script_dir) == "backend":
+    WORKSPACE_ROOT = os.path.dirname(_script_dir)
+else:
+    WORKSPACE_ROOT = _script_dir
+
+# 监控目录（相对于工作区根目录）
+PDF_DIR = os.path.join(WORKSPACE_ROOT, "papers")
+BUILD_SCRIPT = os.path.join(WORKSPACE_ROOT, "build.py")
+METADATA_FILE = os.path.join(WORKSPACE_ROOT, "metadata.json")
+RECYCLE_DIR = os.path.join(WORKSPACE_ROOT, ".recycle_bin")
+SPEEDREAD_CACHE_DIR = os.path.join(WORKSPACE_ROOT, ".speedread_cache")
+LOG_FILE = os.path.join(WORKSPACE_ROOT, "waatchdog.log")
+
 HTTP_PORT = 8000
 SPEEDREAD_MAX_IMAGE_PAGES = 4
 SPEEDREAD_IMAGE_WIDTH = 1400
 SPEEDREAD_MAX_SOURCE_CHARS = 24000
-# 确保 WORKSPACE_ROOT 始终指向脚本所在的仓库根目录
-WORKSPACE_ROOT = os.path.abspath(os.path.dirname(__file__))
-LOG_FILE = os.path.join(WORKSPACE_ROOT, "waatchdog.log")
 
 
 def _log(msg: str) -> None:

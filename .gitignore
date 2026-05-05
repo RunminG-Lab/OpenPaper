@@ -14,8 +14,11 @@ venv/
 .venv
 
 # Temp / editor artifacts
-tempCodeRunnerFile.py
+*.tmp
+*.log
+*.pyc
 output.txt
+tempCodeRunnerFile.py
 
 # IDE
 .vscode/

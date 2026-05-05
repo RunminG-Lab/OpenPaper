@@ -3416,7 +3416,102 @@
     "read": false,
     "bib": "",
     "notes": "",
-    "speed_read": null,
+    "speed_read": {
+      "status": "success",
+      "generated_at": "2026-05-05T22:25:14",
+      "updated_at": "2026-05-05T22:29:37",
+      "model": "gpt-4o",
+      "api_base_url": "https://api.vectorengine.cn/v1/chat/completions",
+      "request_mode": "multimodal",
+      "page_count": 13,
+      "candidate_pages": [
+        {
+          "page": 4,
+          "reason": "核心方法页",
+          "image_path": ".speedread_cache/504393b250d10391/page_004.jpg"
+        },
+        {
+          "page": 7,
+          "reason": "实验结果页",
+          "image_path": ".speedread_cache/504393b250d10391/page_007.jpg"
+        },
+        {
+          "page": 8,
+          "reason": "方法总览图",
+          "image_path": ".speedread_cache/504393b250d10391/page_008.jpg"
+        },
+        {
+          "page": 9,
+          "reason": "分析/消融页",
+          "image_path": ".speedread_cache/504393b250d10391/page_009.jpg"
+        }
+      ],
+      "content": {
+        "one_sentence": "论文提出了一个名为PHYFU的自动化模糊测试框架，用于发现现代物理模拟引擎（PSEs）在正向和反向模拟阶段中的错误。",
+        "quick_takeaways": [
+          "PHYFU通过基于物理定律的测试Oracle检测PSEs的逻辑错误。",
+          "实验表明，PHYFU能够有效发现多种物理场景下的错误，并显著提升错误发现效率。"
+        ],
+        "problem_and_motivation": "现代物理模拟引擎广泛应用于机器人控制、游戏和虚拟现实等领域，但其复杂性导致潜在错误可能影响用户体验甚至引发安全问题。现有测试方法难以有效覆盖隐藏错误区域，亟需一种系统化的测试框架。",
+        "method_overview": "PHYFU设计了一个基于物理定律的测试Oracle，并结合种子生成、调度和测试阶段，系统化地检测PSEs的正向和反向模拟错误。",
+        "method_steps": [
+          "种子生成：生成初始有效状态并确保其满足物理约束。",
+          "种子调度：利用反馈驱动算法优先探索可能触发错误的输入空间。",
+          "测试阶段：通过正向和反向测试Oracle验证模拟结果的正确性。"
+        ],
+        "core_figures": [
+          {
+            "page": 4,
+            "title": "反向测试Oracle的工作原理",
+            "what_to_look": "关注图2中红色和蓝色轨迹的优化过程，以及图3中的测试管道。",
+            "what_it_proves": "证明了通过梯度优化可以检测反向模拟中的错误方向。",
+            "why_important": "该图展示了反向测试Oracle如何利用梯度优化验证模拟结果的正确性，是方法核心部分。",
+            "image_path": ".speedread_cache/504393b250d10391/page_004.jpg",
+            "reason": "核心方法页"
+          },
+          {
+            "page": 7,
+            "title": "实验配置与总体结果",
+            "what_to_look": "查看表I和表II中不同PSE和场景的错误数量及时间开销。",
+            "what_it_proves": "证明了PHYFU在多种配置下的有效性，并揭示了错误发现效率的提升。",
+            "why_important": "该页总结了实验结果，直接展示了方法的有效性和覆盖范围。",
+            "image_path": ".speedread_cache/504393b250d10391/page_007.jpg",
+            "reason": "实验结果页"
+          },
+          {
+            "page": 8,
+            "title": "种子调度算法的效果",
+            "what_to_look": "关注图4中启用与禁用种子调度算法的错误发现数量对比。",
+            "what_it_proves": "证明了种子调度算法显著提升了错误发现效率。",
+            "why_important": "该图表明种子调度算法是提升测试效率的关键组件。",
+            "image_path": ".speedread_cache/504393b250d10391/page_008.jpg",
+            "reason": "方法总览图"
+          },
+          {
+            "page": 9,
+            "title": "错误分类与根因分析",
+            "what_to_look": "查看表III中错误分类及其触发条件。",
+            "what_it_proves": "揭示了不同类型错误的分布及其可能的根本原因。",
+            "why_important": "该页提供了深入理解错误特性的依据，有助于改进PSE设计。",
+            "image_path": ".speedread_cache/504393b250d10391/page_009.jpg",
+            "reason": "分析/消融页"
+          }
+        ],
+        "experiment_read": "实验覆盖了四种主流PSE（Brax、Warp、Taichi和Nimble）及两种场景（球体和机器人），生成了10K测试输入，发现了5932个错误触发输入，其中包括逻辑错误和崩溃问题。种子调度算法显著提升了错误发现效率，错误数量平均增加30%-40%。",
+        "contributions": [
+          "提出了首个针对PSE的自动化模糊测试框架，覆盖正向和反向模拟阶段。",
+          "发现了大量错误触发输入，并通过根因分析揭示了PSE设计中的潜在问题。"
+        ],
+        "limitations": [
+          "种子生成和参数调优需要手动干预，可能影响测试效率。",
+          "部分错误分类依赖启发式方法，可能存在误报。"
+        ],
+        "deep_read_suggestions": [
+          "建议精读第III节（方法设计）和第VI节（实验结果），以深入理解测试Oracle的工作原理及实验配置。",
+          "关注第VII节（错误分类与根因分析），了解错误特性及其对PSE改进的启示。"
+        ]
+      }
+    },
     "added_at": "2026-04-23T15:35:38"
   },
   "vr/ase23_vrguide efficient testing of virtual reality scenes via dynamic cut coverage.pdf": {
@@ -3603,21 +3698,121 @@
     },
     "added_at": "2026-05-05T11:22:08"
   },
-  "demo/nips20_retrieval-augmented_generation_for_knowledge-intensive_nlp_tasks.pdf": {
-    "file_key": "demo/nips20_retrieval-augmented_generation_for_knowledge-intensive_nlp_tasks.pdf",
-    "title": "nips20_Retrieval-Augmented_Generation_for_Knowledge-Intensive_NLP_Tasks",
+  "demo/ase25_vrexplorer__a_model-based_approach_for_semi-automated_testing_of_virtual_reality_scenes.pdf": {
+    "file_key": "demo/ase25_vrexplorer__a_model-based_approach_for_semi-automated_testing_of_virtual_reality_scenes.pdf",
+    "title": "ase25_VRExplorer__A_Model-based_Approach_for_Semi-Automated_Testing_of_Virtual_Reality_Scenes",
     "authors": "Unknown",
-    "year": "2020",
-    "venue": "NeurIPS",
+    "year": "2025",
+    "venue": "ASE",
     "tags": [
       "demo"
     ],
-    "pdf": "papers/demo/nips20_Retrieval-Augmented_Generation_for_Knowledge-Intensive_NLP_Tasks.pdf",
-    "pdf_local": "papers/demo/nips20_Retrieval-Augmented_Generation_for_Knowledge-Intensive_NLP_Tasks.pdf",
+    "pdf": "papers/demo/ase25_VRExplorer__A_Model-based_Approach_for_Semi-Automated_Testing_of_Virtual_Reality_Scenes.pdf",
+    "pdf_local": "papers/demo/ase25_VRExplorer__A_Model-based_Approach_for_Semi-Automated_Testing_of_Virtual_Reality_Scenes.pdf",
     "read": false,
     "bib": "",
     "notes": "",
-    "speed_read": null,
-    "added_at": "2026-05-05T19:01:53"
+    "speed_read": {
+      "status": "success",
+      "generated_at": "2026-05-05T22:21:33",
+      "updated_at": "2026-05-05T22:22:19",
+      "model": "gpt-4o",
+      "api_base_url": "https://api.vectorengine.cn/v1/chat/completions",
+      "request_mode": "multimodal",
+      "page_count": 13,
+      "candidate_pages": [
+        {
+          "page": 2,
+          "reason": "方法总览图",
+          "image_path": ".speedread_cache/36e12e5b36a3a998/page_002.jpg"
+        },
+        {
+          "page": 9,
+          "reason": "实验结果页",
+          "image_path": ".speedread_cache/36e12e5b36a3a998/page_009.jpg"
+        },
+        {
+          "page": 12,
+          "reason": "核心方法页",
+          "image_path": ".speedread_cache/36e12e5b36a3a998/page_012.jpg"
+        },
+        {
+          "page": 13,
+          "reason": "分析/消融页",
+          "image_path": ".speedread_cache/36e12e5b36a3a998/page_013.jpg"
+        }
+      ],
+      "content": {
+        "one_sentence": "VRExplorer是一种基于模型的工具，通过EAT框架和PFSM实现对Unity虚拟现实场景的半自动测试，显著提升代码覆盖率和测试效率。",
+        "quick_takeaways": [
+          "VRExplorer专注于Unity开发的VR应用，利用NavMesh和PFSM实现场景探索与交互。",
+          "实验表明VRExplorer在代码覆盖率和效率上显著优于现有工具VRGuide。"
+        ],
+        "problem_and_motivation": "传统VR测试工具难以应对复杂交互、多样化的虚拟对象以及任务序列的挑战，导致测试效率低下且覆盖率不足。VRExplorer旨在解决这些问题，提供一种系统化的测试方法。",
+        "method_overview": "VRExplorer基于EAT框架对虚拟对象和交互行为进行抽象，并通过PFSM实现自动化交互决策，同时结合NavMesh算法实现场景导航。",
+        "method_steps": [
+          "设计EAT框架，将交互行为分为实体、动作和任务层次。",
+          "利用NavMesh实现场景导航，自动探索虚拟环境。",
+          "通过PFSM进行交互决策，执行复杂任务序列。",
+          "结合静态和动态分析提取交互模式，生成抽象模型。"
+        ],
+        "core_figures": [
+          {
+            "page": 2,
+            "title": "方法总览图",
+            "what_to_look": "关注图中EAT框架的层次结构和VRExplorer的工作流程。",
+            "what_it_proves": "展示了VRExplorer如何通过模型抽象和自动化流程实现高效的VR场景测试。",
+            "why_important": "明确了方法的核心组成部分及其如何解决复杂交互和场景探索问题。",
+            "image_path": ".speedread_cache/36e12e5b36a3a998/page_002.jpg",
+            "reason": "方法总览图"
+          },
+          {
+            "page": 9,
+            "title": "实验结果图表",
+            "what_to_look": "查看代码覆盖率和交互覆盖率的箱线图，以及不同交互类型的分布。",
+            "what_it_proves": "证明了VRExplorer在覆盖率和交互多样性上的显著优势。",
+            "why_important": "支持作者关于工具性能提升的论点，展示了实验的代表性和多样性。",
+            "image_path": ".speedread_cache/36e12e5b36a3a998/page_009.jpg",
+            "reason": "实验结果页"
+          },
+          {
+            "page": 12,
+            "title": "消融实验结果表",
+            "what_to_look": "关注表中不同模块移除对代码覆盖率的影响。",
+            "what_it_proves": "验证了EAT框架中各模块对测试效果的必要性。",
+            "why_important": "强调了框架设计的完整性对测试效率和覆盖率的关键作用。",
+            "image_path": ".speedread_cache/36e12e5b36a3a998/page_012.jpg",
+            "reason": "核心方法页"
+          },
+          {
+            "page": 13,
+            "title": "Bug检测流程图",
+            "what_to_look": "观察EscapeGameVR项目中Bug检测的具体步骤和结果。",
+            "what_it_proves": "展示了VRExplorer在复杂交互任务中检测功能性和非功能性Bug的能力。",
+            "why_important": "突出了工具在实际项目中发现问题的能力，验证了其实用性。",
+            "image_path": ".speedread_cache/36e12e5b36a3a998/page_013.jpg",
+            "reason": "分析/消融页"
+          }
+        ],
+        "experiment_read": "实验在11个代表性VR项目上进行，结果显示VRExplorer在代码覆盖率和方法覆盖率上分别比VRGuide提升122.8%和52.8%。消融实验进一步验证了EAT框架中各模块的必要性。",
+        "contributions": [
+          "提出了EAT框架，系统化抽象VR交互行为。",
+          "开发了VRExplorer工具，实现高效的场景探索和交互测试。",
+          "通过实验验证了工具的性能优势和模块设计的必要性。",
+          "检测并报告了多个实际项目中的功能性和非功能性Bug。"
+        ],
+        "limitations": [
+          "抽象模型的生成仍需人工参与，无法完全自动化。",
+          "工具主要针对Unity开发的VR应用，适用范围有限。",
+          "复杂交互任务可能导致较高的计算开销，影响实时性能。"
+        ],
+        "deep_read_suggestions": [
+          "建议精读第2页的EAT框架设计部分，理解方法核心。",
+          "建议精读第12页的消融实验结果，明确各模块的重要性。",
+          "建议精读第13页的Bug检测流程，了解工具在实际应用中的表现。"
+        ]
+      }
+    },
+    "added_at": "2026-05-05T22:20:29"
   }
 }

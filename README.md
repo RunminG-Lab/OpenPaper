@@ -163,26 +163,24 @@ powershell -ExecutionPolicy Bypass -File .\scripts\uninstall_autostart.ps1
 
 ```
 OpenPaper/
-├── papers/              # 论文存放目录（子目录名 = 分组名，本地不入 git）
-│   ├── demo/            # ✅ 示例论文（随仓库分发，供快速体验）
-│   │   └── nips20_Retrieval-Augmented_Generation_for_Knowledge-Intensive_NLP_Tasks.pdf
-│   ├── LLM/
-│   ├── GUI Testing/
-│   └── ...              # 其他分组，本地自行添加
-├── template.html        # 前端源文件（修改此文件而非 index.html）
-├── index.html           # 由 build.py 生成，勿手动编辑
-├── stats.html           # 独立统计面板
-├── build.py             # 从 template.html + metadata.json 生成 index.html
-├── waatchdog.py         # 本地服务：HTTP Server + 文件监控 + API
-├── metadata.json        # 所有论文的元数据（笔记、标签、已读状态等）
-├── favicon.svg          # 网站图标
+├── backend/
+│   ├── server.py  # Original waatchdog.py
+│   ├── build.py
+│   └── metadata.json
+├── frontend/
+│   ├── index.html
+│   ├── template.html
+│   └── stats.html
+├── utils/
+│   └── fix_metadata.py
+├── papers/
+│   ├── demo/
+│   └── ...
 ├── scripts/
-│   ├── install_autostart.ps1    # 注册开机自启（Windows）
-│   ├── uninstall_autostart.ps1  # 卸载开机自启
-│   ├── start_waatchdog.vbs      # 静默启动脚本（无黑色控制台）
-│   └── fix_metadata.py          # 一次性修复工具：路径漂移时重建 metadata 索引
-├── _docs/               # 文档截图资源
-└── .speedread_cache/    # AI 速读结果缓存（自动创建，不入 git）
+│   ├── install_autostart.ps1
+│   ├── start_server.vbs  # Updated script
+│   └── uninstall_autostart.ps1
+└── .gitignore
 ```
 
 ---
