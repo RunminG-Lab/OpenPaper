@@ -555,6 +555,9 @@ class PDFHandler(FileSystemEventHandler):
             _log(f"❌ build 失败: {exc}")
 
 if __name__ == "__main__":
+    # 确保工作目录始终是仓库根目录，这样 HTTP 服务器才能正确提供文件
+    os.chdir(WORKSPACE_ROOT)
+    
     # 解析端口参数：python waatchdog.py [--port 8001]
     port = HTTP_PORT
     argv = sys.argv[1:]
