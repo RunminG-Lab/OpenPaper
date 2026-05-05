@@ -17,7 +17,8 @@ BUILD_SCRIPT = "build.py"  # 构建脚本
 METADATA_FILE = "metadata.json"
 RECYCLE_DIR = ".recycle_bin"
 HTTP_PORT = 8000
-WORKSPACE_ROOT = os.path.abspath(os.getcwd())
+# 确保 WORKSPACE_ROOT 始终指向脚本所在的仓库根目录
+WORKSPACE_ROOT = os.path.abspath(os.path.dirname(__file__))
 LOG_FILE = os.path.join(WORKSPACE_ROOT, "waatchdog.log")
 
 
