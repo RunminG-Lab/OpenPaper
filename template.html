@@ -122,6 +122,51 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 .theme-preset.active { border-color:#111; }
 .file-actions-block { display:flex; flex-direction:column; gap:10px; }
 .file-actions-block button { width:100%; text-align:left; padding:10px 14px; }
+.ai-settings-grid { display:grid; gap:12px; }
+.ai-settings-block label { display:block; font-size:0.92em; color:var(--surface-strong-color); margin-bottom:4px; }
+.ai-settings-block input { margin:0; }
+.ai-settings-tip { font-size:0.82em; color:#94a3b8; line-height:1.6; }
+
+/* ===== 速读 ===== */
+.speedread-strip { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.speedread-status { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:4px 10px; font-size:0.82em; font-weight:600; }
+.speedread-status.idle { background:#eef2ff; color:#4338ca; }
+.speedread-status.running { background:#fff7ed; color:#c2410c; }
+.speedread-status.success { background:#ecfdf3; color:#047857; }
+.speedread-status.error { background:#fef2f2; color:#b91c1c; }
+.speedread-substatus { color:#94a3b8; font-size:0.82em; }
+.speedread-error-inline { color:#b91c1c; font-size:0.82em; margin-top:4px; }
+.paper .actions .btn-speedread { background:var(--accent-color); color:#fff; border-color:var(--accent-color); font-weight:600; }
+.paper .actions .btn-speedread:hover { background:var(--accent-color-hover); }
+.paper .actions .btn-speedread[disabled] { opacity:0.72; cursor:wait; }
+.speedread-modal { max-width:1120px; }
+.speedread-head-actions { display:flex; align-items:center; gap:8px; }
+.speedread-meta { padding:10px 18px 12px; border-bottom:1px solid var(--surface-border); background:var(--surface-muted-bg); color:#64748b; font-size:0.86em; line-height:1.6; }
+.speedread-body { padding:18px; max-height:78vh; overflow:auto; display:flex; flex-direction:column; gap:16px; }
+.speedread-empty { color:#94a3b8; text-align:center; padding:28px 18px; font-style:italic; }
+.speedread-loading { color:#c2410c; text-align:center; padding:28px 18px; font-weight:600; }
+.speedread-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px; }
+.speedread-hero { display:grid; grid-template-columns:1.35fr 1fr; gap:14px; }
+.speedread-panel { border:1px solid var(--surface-border); border-radius:12px; background:var(--surface-bg); padding:14px; }
+.speedread-panel h3 { margin:0 0 10px; font-size:1em; color:var(--surface-strong-color); }
+.speedread-one-liner { font-size:1.05em; line-height:1.7; color:var(--surface-strong-color); }
+.speedread-paragraph { color:var(--surface-text-color); line-height:1.8; white-space:pre-wrap; }
+.speedread-list { margin:0; padding-left:18px; color:var(--surface-text-color); }
+.speedread-list li { margin:0 0 8px; line-height:1.7; }
+.speedread-figure-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; }
+.speedread-figure-card { border:1px solid var(--surface-border); border-radius:12px; overflow:hidden; background:var(--surface-bg); display:flex; flex-direction:column; }
+.speedread-figure-card img { width:100%; display:block; background:#e5e7eb; }
+.speedread-figure-placeholder { aspect-ratio:4/3; display:flex; align-items:center; justify-content:center; color:#94a3b8; background:#f8fafc; }
+.speedread-figure-body { padding:12px; display:flex; flex-direction:column; gap:8px; }
+.speedread-chip { display:inline-flex; align-items:center; gap:4px; width:max-content; padding:3px 8px; border-radius:999px; background:#eef2ff; color:#4338ca; font-size:0.78em; font-weight:600; }
+.speedread-figure-body h4 { margin:0; font-size:0.96em; color:var(--surface-strong-color); }
+.speedread-figure-note { color:var(--surface-text-color); font-size:0.9em; line-height:1.7; }
+.speedread-figure-note strong { color:var(--surface-strong-color); }
+
+@media (max-width: 900px) {
+    .speedread-hero { grid-template-columns:1fr; }
+    .speedread-modal { max-width:100%; }
+}
 
 /* ===== 日志面板 ===== */
 .log-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
@@ -231,6 +276,7 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
             <div class="modal-tabs">
                 <button type="button" class="tab-btn active" data-tab="appearance">🎨 外观</button>
                 <button type="button" class="tab-btn" data-tab="files">📂 文件</button>
+                <button type="button" class="tab-btn" data-tab="ai">⚡ 速读</button>
                 <button type="button" class="tab-btn" data-tab="logs">📜 日志</button>
                 <button type="button" class="tab-btn" data-tab="recycle">🗑️ 回收站</button>
             </div>
@@ -263,6 +309,81 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
                     <button type="button" id="reload-data">🔄 重新加载</button>
                 </div>
             </div>
+            <div class="modal-tab-pane" data-pane="ai">
+                <div class="ai-settings-grid">
+                    <div class="ai-settings-block">
+                        <label for="ai-api-base">OpenAI 兼容 API 地址</label>
+                        <input type="text" id="ai-api-base" placeholder="例如 https://api.openai.com/v1 或 https://api.vectorengine.cn/v1">
+                        <div class="ai-settings-tip">会自动补成 /chat/completions。支持 OpenAI、Claude、Qwen、GLM 等兼容接口。</div>
+                        <div class="ai-settings-tip">像 VectorEngine 这类中转接口如果不支持图像输入，系统会自动降级为纯文本速读，不会直接失败。</div>
+                        <div style="margin-top:8px; font-size:0.85em; color:#6b7280;">
+                            <strong>常见地址：</strong>
+                            <ul style="margin:4px 0; padding-left:18px;">
+                                <li>OpenAI: https://api.openai.com/v1</li>
+                                <li>Anthropic: https://api.anthropic.com/v1</li>
+                                <li>VectorEngine: https://api.vectorengine.cn/v1</li>
+                                <li>VolcEngine: https://maas-api.ml-platform.cn/v1</li>
+                                <li>Groq: https://api.groq.com/openai/v1</li>
+                                <li>本地 (Ollama): http://localhost:11434/v1</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="ai-settings-block">
+                        <label for="ai-api-key">API Key</label>
+                        <input type="password" id="ai-api-key" placeholder="sk-... 或 其他格式的 key">
+                        <div class="ai-settings-tip">仅保存在当前浏览器，不会写入 metadata.json。</div>
+                    </div>
+                    <div class="ai-settings-block">
+                        <label for="ai-model">模型名称</label>
+                        <input type="text" id="ai-model" placeholder="选择或手动输入">
+                        <div style="margin-top:6px;">
+                            <select id="ai-model-preset" style="width:100%; padding:6px; border:1px solid #d1d5db; border-radius:6px; font-size:0.9em; background:#fff;">
+                                <option value="">📋 推荐模型 - 点击快速选择</option>
+                                <optgroup label="OpenAI (API: https://api.openai.com/v1)">
+                                    <option value="gpt-4o">gpt-4o (最新，性能好)</option>
+                                    <option value="gpt-4-turbo">gpt-4-turbo (视觉能力强)</option>
+                                    <option value="gpt-4-vision">gpt-4-vision</option>
+                                    <option value="gpt-4">gpt-4</option>
+                                </optgroup>
+                                <optgroup label="Claude (API: https://api.anthropic.com/v1)">
+                                    <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet (推荐)</option>
+                                    <option value="claude-3-opus-20240229">claude-3-opus (强)</option>
+                                    <option value="claude-3-haiku-20240307">claude-3-haiku (快)</option>
+                                </optgroup>
+                                <optgroup label="Google Gemini (API: https://generativelanguage.googleapis.com/v1beta/openai/)">
+                                    <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                                    <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                                </optgroup>
+                                <optgroup label="阿里 Qwen (API: https://dashscope.aliyuncs.com/compatible-mode/v1)">
+                                    <option value="qwen-vl-max">qwen-vl-max (推荐)</option>
+                                    <option value="qwen-vl-plus">qwen-vl-plus</option>
+                                </optgroup>
+                                <optgroup label="智谱 GLM (API: https://open.bigmodel.cn/api/paas/v4)">
+                                    <option value="glm-4v-plus">glm-4v-plus (推荐)</option>
+                                    <option value="glm-4v">glm-4v</option>
+                                </optgroup>
+                                <optgroup label="Groq (API: https://api.groq.com/openai/v1)">
+                                    <option value="mixtral-8x7b-32768">mixtral-8x7b (快)</option>
+                                    <option value="llama-3.1-70b-versatile">llama-3.1-70b</option>
+                                </optgroup>
+                                <optgroup label="火山引擎 (API: https://maas-api.ml-platform.cn/v1)">
+                                    <option value="doubao-pro-32k">doubao-pro-32k</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="ai-settings-block">
+                        <label for="ai-timeout">请求超时（秒）</label>
+                        <input type="number" id="ai-timeout" min="30" max="600" step="10" placeholder="180">
+                        <div class="ai-settings-tip">建议视觉模型设置 180-300 秒。</div>
+                    </div>
+                </div>
+                <div style="margin-top:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <button type="button" id="ai-test">测试接口</button>
+                    <button type="button" id="ai-reset">清空速读配置</button>
+                    <span class="settings-hint">需要通过 waatchdog.py 启动本地服务。选择推荐模型后自动填入模型名。</span>
+                </div>
+            </div>
             <div class="modal-tab-pane" data-pane="logs">
                 <div class="log-toolbar">
                     <button type="button" id="log-refresh">🔄 刷新</button>
@@ -283,6 +404,22 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
                 <div id="recycle-list" class="recycle-list"><div class="recycle-empty">加载中…</div></div>
                 <div style="margin-top:8px; font-size:0.78em; color:#94a3b8;">删除的论文会被移到工作区下的 <code>.recycle_bin/</code> 临时文件夹，可以随时恢复；永久删除后不可恢复。</div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div id="speedread-modal" class="modal-mask" role="dialog" aria-modal="true">
+    <div class="modal speedread-modal" onclick="event.stopPropagation()">
+        <div class="modal-head">
+            <h2 id="speedread-modal-title">⚡ 论文速读</h2>
+            <div class="speedread-head-actions">
+                <button type="button" id="speedread-regenerate">🔁 重新生成</button>
+                <button type="button" class="modal-close" id="speedread-close" title="关闭">✕</button>
+            </div>
+        </div>
+        <div id="speedread-meta" class="speedread-meta">未生成</div>
+        <div id="speedread-body" class="speedread-body">
+            <div class="speedread-empty">点击论文卡片中的 ⚡ 按钮生成速读。</div>
         </div>
     </div>
 </div>
@@ -311,6 +448,16 @@ const toggleAllBtn = document.getElementById('toggle-all-groups');
 const toggleViewModeBtn = document.getElementById('toggle-view-mode');
 const toggleUnreadBtn = document.getElementById('toggle-unread');
 const statsBar = document.getElementById('stats-bar');
+const speedReadModal = document.getElementById('speedread-modal');
+const speedReadModalTitle = document.getElementById('speedread-modal-title');
+const speedReadMeta = document.getElementById('speedread-meta');
+const speedReadBody = document.getElementById('speedread-body');
+const speedReadCloseBtn = document.getElementById('speedread-close');
+const speedReadRegenerateBtn = document.getElementById('speedread-regenerate');
+
+let settingsModalApi = null;
+let activeSpeedReadKey = null;
+const speedReadGeneratingKeys = new Set();
 
 // ===== UI 状态（带 localStorage 持久化） =====
 const UI_STATE_KEY = 'papers-visualizer-ui-state-v1';
@@ -519,6 +666,113 @@ function isSameTheme(a, b) {
 let currentTheme = loadTheme();
 applyTheme();
 
+// ===== 速读配置（仅本地浏览器持久化） =====
+const SPEEDREAD_CONFIG_KEY = 'papers-visualizer-speedread-config-v1';
+const defaultSpeedReadConfig = {
+    apiBaseUrl: '',
+    apiKey: '',
+    model: '',
+    timeoutSec: 180,
+};
+function loadSpeedReadConfig() {
+    try {
+        const raw = localStorage.getItem(SPEEDREAD_CONFIG_KEY);
+        if (!raw) return { ...defaultSpeedReadConfig };
+        return { ...defaultSpeedReadConfig, ...JSON.parse(raw) };
+    } catch (_) {
+        return { ...defaultSpeedReadConfig };
+    }
+}
+function saveSpeedReadConfig() {
+    try { localStorage.setItem(SPEEDREAD_CONFIG_KEY, JSON.stringify(currentSpeedReadConfig)); } catch (_) {}
+}
+let currentSpeedReadConfig = loadSpeedReadConfig();
+
+function openSettingsPane(tab = 'appearance') {
+    if (settingsModalApi && typeof settingsModalApi.open === 'function') {
+        settingsModalApi.open(tab);
+    }
+}
+
+function formatSpeedReadTime(isoStr) {
+    if (!isoStr) return '时间未知';
+    const date = new Date(isoStr);
+    if (Number.isNaN(date.getTime())) return isoStr;
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function renderTextBlock(text) {
+    return escapeHtml(text || '论文中未明确说明').replace(/\n/g, '<br>');
+}
+
+function renderBulletList(items) {
+    const list = Array.isArray(items) && items.length ? items : ['论文中未明确说明'];
+    return `<ul class="speedread-list">${list.map(item => `<li>${renderTextBlock(item)}</li>`).join('')}</ul>`;
+}
+
+function getSpeedReadUiState(paper) {
+    if (!paper) {
+        return { status: 'idle', statusText: '未生成速读', buttonText: '⚡生成速读', disabled: false };
+    }
+    if (speedReadGeneratingKeys.has(paper.file_key)) {
+        return { status: 'running', statusText: '生成中...', buttonText: '⚡生成中...', disabled: true };
+    }
+    const speedRead = paper.speed_read;
+    if (!speedRead || !speedRead.status) {
+        return { status: 'idle', statusText: '未生成速读', buttonText: '⚡生成速读', disabled: false };
+    }
+    if (speedRead.status === 'success') {
+        return { status: 'success', statusText: '已生成速读', buttonText: '⚡打开速读', disabled: false };
+    }
+    if (speedRead.status === 'error') {
+        return { status: 'error', statusText: '生成失败', buttonText: '⚡重试速读', disabled: false };
+    }
+    return { status: 'running', statusText: '生成中...', buttonText: '⚡生成中...', disabled: true };
+}
+
+function replacePaperCardByKey(key) {
+    const paper = papers.find(item => item.file_key === key);
+    if (!paper) return;
+    const oldCard = papersContainer.querySelector(`.paper[data-key="${CSS.escape(key)}"]`);
+    if (!oldCard) return;
+    const showTags = oldCard.dataset.showTags === '1' || isFlatMode;
+    const newCard = createPaperCard(paper, { showTags });
+    const oldCollapse = oldCard.querySelector('.collapse');
+    const newCollapse = newCard.querySelector('.collapse');
+    if (oldCollapse && newCollapse) newCollapse.style.display = oldCollapse.style.display;
+    oldCard.replaceWith(newCard);
+}
+
+function updatePaperSpeedRead(key, speedRead) {
+    const paper = papers.find(item => item.file_key === key);
+    if (!paper) return;
+    paper.speed_read = speedRead;
+    metadataMap[key] = { ...(metadataMap[key] || {}), ...paper, speed_read: speedRead };
+    metadataMap[key].file_key = key;
+    replacePaperCardByKey(key);
+    if (activeSpeedReadKey === key) {
+        renderSpeedReadModal(paper);
+    }
+}
+
+function getSpeedReadConfigForRequest() {
+    const apiBaseUrl = (currentSpeedReadConfig.apiBaseUrl || '').trim();
+    const apiKey = (currentSpeedReadConfig.apiKey || '').trim();
+    const model = (currentSpeedReadConfig.model || '').trim();
+    const timeoutSec = Number(currentSpeedReadConfig.timeoutSec || 180);
+    if (!apiBaseUrl || !apiKey || !model) {
+        showStatus('请先在“设置 → ⚡ 速读”中填写 API 地址、Key 和模型名称。', true);
+        openSettingsPane('ai');
+        return null;
+    }
+    return {
+        apiBaseUrl,
+        apiKey,
+        model,
+        timeoutSec: Number.isFinite(timeoutSec) ? timeoutSec : 180,
+    };
+}
+
 function escapeHtml(str = '') {
     return String(str)
         .replace(/&/g, '&amp;')
@@ -558,6 +812,15 @@ async function initApp() {
 
     initTagFilterUI();
     initSettingsModal();
+    speedReadCloseBtn.addEventListener('click', closeSpeedReadModal);
+    speedReadModal.addEventListener('click', (e) => {
+        if (e.target === speedReadModal) closeSpeedReadModal();
+    });
+    speedReadRegenerateBtn.addEventListener('click', () => {
+        if (activeSpeedReadKey) {
+            generateSpeedRead(activeSpeedReadKey, { force: true, openAfterSuccess: true });
+        }
+    });
 
     // 应用持久化的初始 UI 状态
     sortBySelect.value = currentSortBy;
@@ -590,6 +853,11 @@ function syncToggleVisuals() {
 function handleGlobalKeydown(e) {
     const target = e.target;
     const isTyping = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+    if (e.key === 'Escape' && speedReadModal.classList.contains('open')) {
+        e.preventDefault();
+        closeSpeedReadModal();
+        return;
+    }
     if (e.key === '/' && !isTyping) {
         e.preventDefault();
         searchInput.focus();
@@ -930,6 +1198,16 @@ function createPaperCard(p, opts = {}) {
     const addedHintHtml = relativeAdded
         ? `<div class="added-hint ${isFresh ? 'fresh' : ''}" title="${escapeHtml(p.added_at)}">🕐 ${escapeHtml(relativeAdded)}</div>`
         : '';
+    const speedReadUi = getSpeedReadUiState(p);
+    const speedRead = p.speed_read || null;
+    const speedReadHint = speedReadUi.status === 'success'
+        ? `更新于 ${escapeHtml(formatSpeedReadTime(speedRead.updated_at || speedRead.generated_at || ''))}`
+        : (speedReadUi.status === 'error'
+            ? `上次失败于 ${escapeHtml(formatSpeedReadTime((speedRead && speedRead.updated_at) || ''))}`
+            : '按需生成并长期绑定到该论文');
+    const speedReadErrorHtml = speedRead && speedRead.status === 'error' && speedRead.error
+        ? `<div class="speedread-error-inline">${escapeHtml(speedRead.error)}</div>`
+        : '';
 
     div.innerHTML = `
         <div class="paper-header">
@@ -954,7 +1232,14 @@ function createPaperCard(p, opts = {}) {
             <div class="note-content">${escapeHtml(p.notes)}</div>
         </div>` : ''}
 
-        <div class="actions" style="display: flex; align-items: center; gap: 4px; flex-wrap: nowrap;">
+        <div class="speedread-strip">
+            <span class="speedread-status ${speedReadUi.status}">⚡ ${escapeHtml(speedReadUi.statusText)}</span>
+            <span class="speedread-substatus">${speedReadHint}</span>
+        </div>
+        ${speedReadErrorHtml}
+
+        <div class="actions" style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+            <button type="button" class="btn-speedread" onclick="handleSpeedReadClick('${p.file_key}')" ${speedReadUi.disabled ? 'disabled' : ''} title="为当前这篇论文生成或打开速读">${escapeHtml(speedReadUi.buttonText)}</button>
             ${p.pdf_local ? `<button type="button" onclick="openLocalSource('${encodedLocal}')" title="尝试通过 file:// 打开原始文件">打开源文件</button>` : ''}
             <button onclick="toggleEdit(this)">✏️ 编辑</button>
             <button type="button" onclick="openContainingFolder('${encodedLocal}')" title="打开文件所在文件夹并聚焦">📂 打开所在目录</button>
@@ -985,6 +1270,211 @@ function createPaperCard(p, opts = {}) {
     const tagSuggest = div.querySelector('.tag-suggest');
     if (tagInput && tagSuggest) attachTagAutocomplete(tagInput, tagSuggest);
     return div;
+}
+
+async function handleSpeedReadClick(key) {
+    const paper = papers.find(item => item.file_key === key);
+    if (!paper) return;
+    const speedReadUi = getSpeedReadUiState(paper);
+    if (speedReadUi.status === 'success') {
+        openSpeedReadModal(key);
+        return;
+    }
+    if (speedReadUi.status === 'running') {
+        openSpeedReadModal(key);
+        return;
+    }
+    await generateSpeedRead(key, {
+        force: speedReadUi.status === 'error',
+        openAfterSuccess: true,
+    });
+}
+
+async function generateSpeedRead(key, { force = false, openAfterSuccess = true } = {}) {
+    const paper = papers.find(item => item.file_key === key);
+    if (!paper) return;
+    if (speedReadGeneratingKeys.has(key)) {
+        openSpeedReadModal(key);
+        return;
+    }
+    if (!backendAvailable) {
+        showStatus('速读生成依赖 waatchdog.py 本地服务；请先启动本地服务后刷新页面。', true);
+        return;
+    }
+    const apiConfig = getSpeedReadConfigForRequest();
+    if (!apiConfig) return;
+
+    speedReadGeneratingKeys.add(key);
+    updatePaperSpeedRead(key, {
+        ...(paper.speed_read || {}),
+        status: 'running',
+        updated_at: new Date().toISOString(),
+        error: '',
+        model: apiConfig.model,
+    });
+    showStatus(`正在生成速读：${paper.title || key}`, false);
+    if (activeSpeedReadKey === key) renderSpeedReadModal(paper);
+
+    let responseData = null;
+    try {
+        const response = await fetch('/api/generate-speedread', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                file_key: key,
+                force,
+                apiConfig,
+            }),
+        });
+        responseData = await response.json().catch(() => ({}));
+        if (!response.ok || !responseData.ok) {
+            throw new Error(responseData.error || `HTTP ${response.status}`);
+        }
+        updatePaperSpeedRead(key, responseData.speed_read || {
+            status: 'success',
+            updated_at: new Date().toISOString(),
+            content: null,
+        });
+        showStatus(`速读已生成：${paper.title || key}`, false);
+        if (openAfterSuccess) openSpeedReadModal(key);
+    } catch (err) {
+        const fallbackState = responseData && responseData.speed_read
+            ? responseData.speed_read
+            : {
+                ...(paper.speed_read || {}),
+                status: 'error',
+                updated_at: new Date().toISOString(),
+                error: err.message || String(err),
+            };
+        updatePaperSpeedRead(key, fallbackState);
+        showStatus(`速读生成失败：${fallbackState.error || err.message || err}`, true);
+        openSpeedReadModal(key);
+    } finally {
+        speedReadGeneratingKeys.delete(key);
+        replacePaperCardByKey(key);
+        if (activeSpeedReadKey === key) {
+            const latestPaper = papers.find(item => item.file_key === key);
+            if (latestPaper) renderSpeedReadModal(latestPaper);
+        }
+    }
+}
+
+function closeSpeedReadModal() {
+    activeSpeedReadKey = null;
+    speedReadModal.classList.remove('open');
+}
+
+function openSpeedReadModal(key) {
+    const paper = papers.find(item => item.file_key === key);
+    if (!paper) return;
+    activeSpeedReadKey = key;
+    speedReadModal.classList.add('open');
+    renderSpeedReadModal(paper);
+}
+
+function renderSpeedReadModal(paper) {
+    if (!paper) return;
+    const speedRead = paper.speed_read || null;
+    const speedReadUi = getSpeedReadUiState(paper);
+    const headerBits = [];
+    if (paper.venue || paper.year) {
+        headerBits.push(`[${[paper.venue || '', paper.year || ''].filter(Boolean).join(' ')}]`);
+    }
+    if (paper.authors) headerBits.push(`作者：${paper.authors}`);
+    if (speedRead && speedRead.model) headerBits.push(`模型：${speedRead.model}`);
+    if (speedRead && speedRead.request_mode === 'text-only') headerBits.push('模式：纯文本回退');
+    if (speedRead && (speedRead.updated_at || speedRead.generated_at)) {
+        headerBits.push(`更新：${formatSpeedReadTime(speedRead.updated_at || speedRead.generated_at)}`);
+    }
+
+    speedReadModalTitle.textContent = `⚡ ${paper.title || '论文速读'}`;
+    speedReadMeta.innerHTML = headerBits.length ? escapeHtml(headerBits.join(' · ')) : '未生成速读';
+    speedReadRegenerateBtn.disabled = speedReadUi.status === 'running';
+    speedReadRegenerateBtn.textContent = speedReadUi.status === 'running' ? '⏳ 生成中...' : '🔁 重新生成';
+
+    if (speedReadUi.status === 'running') {
+        speedReadBody.innerHTML = '<div class="speedread-loading">正在读取 PDF、抽取关键页并生成速读，请稍候...</div>';
+        return;
+    }
+    if (!speedRead || speedRead.status !== 'success' || !speedRead.content) {
+        const errorText = speedRead && speedRead.status === 'error'
+            ? `<div class="speedread-panel"><h3>生成失败</h3><div class="speedread-paragraph">${renderTextBlock(speedRead.error || '未返回错误详情')}</div></div>`
+            : '<div class="speedread-empty">这篇论文还没有速读内容，点击“重新生成”或卡片上的 ⚡ 按钮开始生成。</div>';
+        speedReadBody.innerHTML = errorText;
+        return;
+    }
+
+    const content = speedRead.content || {};
+    const coreFigures = Array.isArray(content.core_figures) ? content.core_figures : [];
+    const figureCardsHtml = coreFigures.length
+        ? `<div class="speedread-figure-grid">${coreFigures.map(item => {
+            const imageHtml = item.image_path
+                ? `<img src="${escapeHtml(item.image_path)}" alt="page ${escapeHtml(String(item.page || ''))}">`
+                : '<div class="speedread-figure-placeholder">无页面截图</div>';
+            return `
+                <article class="speedread-figure-card">
+                    ${imageHtml}
+                    <div class="speedread-figure-body">
+                        <span class="speedread-chip">Page ${escapeHtml(String(item.page || '?'))}${item.reason ? ` · ${escapeHtml(item.reason)}` : ''}</span>
+                        <h4>${renderTextBlock(item.title || '关键图表')}</h4>
+                        <div class="speedread-figure-note"><strong>看什么：</strong>${renderTextBlock(item.what_to_look)}</div>
+                        <div class="speedread-figure-note"><strong>它说明了什么：</strong>${renderTextBlock(item.what_it_proves)}</div>
+                        <div class="speedread-figure-note"><strong>为什么重要：</strong>${renderTextBlock(item.why_important)}</div>
+                    </div>
+                </article>
+            `;
+        }).join('')}</div>`
+        : '<div class="speedread-empty">当前结果未识别出可展示的关键图表页。</div>';
+
+    speedReadBody.innerHTML = `
+        <div class="speedread-hero">
+            <section class="speedread-panel">
+                <h3>一句话总结</h3>
+                <div class="speedread-one-liner">${renderTextBlock(content.one_sentence)}</div>
+            </section>
+            <section class="speedread-panel">
+                <h3>快速省流</h3>
+                ${renderBulletList(content.quick_takeaways)}
+            </section>
+        </div>
+
+        <section class="speedread-panel">
+            <h3>问题与动机</h3>
+            <div class="speedread-paragraph">${renderTextBlock(content.problem_and_motivation)}</div>
+        </section>
+
+        <section class="speedread-panel">
+            <h3>方法速读</h3>
+            <div class="speedread-paragraph">${renderTextBlock(content.method_overview)}</div>
+            ${renderBulletList(content.method_steps)}
+        </section>
+
+        <section class="speedread-panel">
+            <h3>核心图表解读</h3>
+            ${figureCardsHtml}
+        </section>
+
+        <section class="speedread-panel">
+            <h3>实验速读</h3>
+            <div class="speedread-paragraph">${renderTextBlock(content.experiment_read)}</div>
+        </section>
+
+        <div class="speedread-grid">
+            <section class="speedread-panel">
+                <h3>贡献</h3>
+                ${renderBulletList(content.contributions)}
+            </section>
+            <section class="speedread-panel">
+                <h3>局限</h3>
+                ${renderBulletList(content.limitations)}
+            </section>
+        </div>
+
+        <section class="speedread-panel">
+            <h3>精读建议</h3>
+            ${renderBulletList(content.deep_read_suggestions)}
+        </section>
+    `;
 }
 
 async function openContainingFolder(encodedUri) {
@@ -1466,6 +1956,13 @@ function initSettingsModal() {
     const readBgInput = document.getElementById('theme-read-bg');
     const presetWrap = document.getElementById('theme-presets');
     const resetBtn = document.getElementById('theme-reset');
+    const aiApiBaseInput = document.getElementById('ai-api-base');
+    const aiApiKeyInput = document.getElementById('ai-api-key');
+    const aiModelInput = document.getElementById('ai-model');
+    const aiModelPresetSelect = document.getElementById('ai-model-preset');
+    const aiTimeoutInput = document.getElementById('ai-timeout');
+    const aiTestBtn = document.getElementById('ai-test');
+    const aiResetBtn = document.getElementById('ai-reset');
 
     function syncInputs() {
         accentInput.value = currentTheme.accent;
@@ -1477,6 +1974,36 @@ function initSettingsModal() {
             el.classList.toggle('active', isSameTheme(THEME_PRESETS[idx], currentTheme));
         });
     }
+
+    function syncAiInputs() {
+        aiApiBaseInput.value = currentSpeedReadConfig.apiBaseUrl || '';
+        aiApiKeyInput.value = currentSpeedReadConfig.apiKey || '';
+        aiModelInput.value = currentSpeedReadConfig.model || '';
+        aiTimeoutInput.value = currentSpeedReadConfig.timeoutSec || 180;
+    }
+
+    function activateTab(tab) {
+        modal.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+        });
+        modal.querySelectorAll('.modal-tab-pane').forEach(pane => {
+            pane.classList.toggle('active', pane.getAttribute('data-pane') === tab);
+        });
+        if (tab === 'logs') {
+            refreshLogView();
+        } else if (tab === 'recycle') {
+            refreshRecycleView();
+        }
+    }
+
+    function openModal(tab = 'appearance') {
+        syncInputs();
+        syncAiInputs();
+        activateTab(tab);
+        modal.classList.add('open');
+    }
+
+    settingsModalApi = { open: openModal };
 
     // 渲染预设
     presetWrap.innerHTML = THEME_PRESETS.map((p, idx) =>
@@ -1511,9 +2038,66 @@ function initSettingsModal() {
         syncInputs();
     });
 
+    [
+        ['apiBaseUrl', aiApiBaseInput],
+        ['apiKey', aiApiKeyInput],
+        ['model', aiModelInput],
+        ['timeoutSec', aiTimeoutInput],
+    ].forEach(([key, input]) => {
+        input.addEventListener('input', () => {
+            currentSpeedReadConfig[key] = key === 'timeoutSec' ? Number(input.value || 180) : input.value;
+            saveSpeedReadConfig();
+        });
+    });
+
+    aiResetBtn.addEventListener('click', () => {
+        currentSpeedReadConfig = { ...defaultSpeedReadConfig };
+        saveSpeedReadConfig();
+        syncAiInputs();
+    });
+
+    aiModelPresetSelect.addEventListener('change', () => {
+        const selectedModel = aiModelPresetSelect.value;
+        if (selectedModel) {
+            aiModelInput.value = selectedModel;
+            currentSpeedReadConfig.model = selectedModel;
+            saveSpeedReadConfig();
+            aiModelPresetSelect.value = '';
+        }
+    });
+
+    aiTestBtn.addEventListener('click', async () => {
+        if (!backendAvailable) {
+            showStatus('接口测试依赖 waatchdog.py 本地服务；请先启动本地服务后刷新页面。', true);
+            return;
+        }
+        const apiConfig = getSpeedReadConfigForRequest();
+        if (!apiConfig) return;
+        aiTestBtn.disabled = true;
+        const originalText = aiTestBtn.textContent;
+        aiTestBtn.textContent = '测试中...';
+        try {
+            const response = await fetch('/api/test-speedread-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ apiConfig }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.ok) {
+                throw new Error(data.error || `HTTP ${response.status}`);
+            }
+            const modeText = data.request_mode === 'text-only' ? '纯文本模式' : '图文模式';
+            showStatus(`接口测试成功：${modeText}。${data.preview || ''}`, false);
+        } catch (err) {
+            showStatus(`接口测试失败：${err && err.message ? err.message : '未知错误'}`, true);
+        } finally {
+            aiTestBtn.disabled = false;
+            aiTestBtn.textContent = originalText;
+        }
+    });
+
     openBtn.addEventListener('click', () => {
-        syncInputs();
-        modal.classList.add('open');
+        openModal('appearance');
     });
     closeBtn.addEventListener('click', () => modal.classList.remove('open'));
     modal.addEventListener('click', (e) => {
@@ -1528,16 +2112,7 @@ function initSettingsModal() {
     // Tab 切换
     modal.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const tab = btn.getAttribute('data-tab');
-            modal.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
-            modal.querySelectorAll('.modal-tab-pane').forEach(p => {
-                p.classList.toggle('active', p.getAttribute('data-pane') === tab);
-            });
-            if (tab === 'logs') {
-                refreshLogView();
-            } else if (tab === 'recycle') {
-                refreshRecycleView();
-            }
+            activateTab(btn.getAttribute('data-tab'));
         });
     });
 

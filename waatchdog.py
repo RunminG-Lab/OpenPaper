@@ -6,8 +6,12 @@ import re
 import shutil
 import threading
 import json
+import hashlib
+import base64
+import tempfile
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs, unquote
+from urllib import request, error
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -16,7 +20,11 @@ PDF_DIR = "papers"  # 监控目录
 BUILD_SCRIPT = "build.py"  # 构建脚本
 METADATA_FILE = "metadata.json"
 RECYCLE_DIR = ".recycle_bin"
+SPEEDREAD_CACHE_DIR = ".speedread_cache"
 HTTP_PORT = 8000
+SPEEDREAD_MAX_IMAGE_PAGES = 4
+SPEEDREAD_IMAGE_WIDTH = 1400
+SPEEDREAD_MAX_SOURCE_CHARS = 24000
 # 确保 WORKSPACE_ROOT 始终指向脚本所在的仓库根目录
 WORKSPACE_ROOT = os.path.abspath(os.path.dirname(__file__))
 LOG_FILE = os.path.join(WORKSPACE_ROOT, "waatchdog.log")
@@ -143,6 +151,12 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             return
         if parsed.path == "/api/update-paper":
             self.handle_update_paper(payload)
+            return
+        if parsed.path == "/api/generate-speedread":
+            self.handle_generate_speedread(payload)
+            return
+        if parsed.path == "/api/test-speedread-config":
+            self.handle_test_speedread_config(payload)
             return
         self._send_json(404, {"ok": False, "error": "未知接口"})
 
@@ -412,6 +426,704 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(500, {"ok": False, "error": f"更新失败: {exc}"})
             return
         self._send_json(200, {"ok": True, "file_key": file_key})
+
+    # ------- 论文速读 -------
+    def _load_metadata_dict(self):
+        meta_abs = os.path.join(WORKSPACE_ROOT, METADATA_FILE)
+        if not os.path.exists(meta_abs):
+            return {}
+        with open(meta_abs, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+
+    def _clean_page_text(self, text, limit=None):
+        cleaned = (text or "").replace("\x00", "")
+        cleaned = cleaned.replace("\r\n", "\n").replace("\r", "\n")
+        cleaned = re.sub(r"[ \t]+", " ", cleaned)
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        cleaned = cleaned.strip()
+        if limit and len(cleaned) > limit:
+            cleaned = cleaned[:limit].rstrip() + " ..."
+        return cleaned
+
+    def _speedread_text_value(self, value, fallback="论文中未明确说明"):
+        if not isinstance(value, str):
+            return fallback
+        cleaned = self._clean_page_text(value)
+        return cleaned or fallback
+
+    def _speedread_list_value(self, value, fallback_text="论文中未明确说明", max_items=6):
+        if not isinstance(value, list):
+            return [fallback_text]
+        items = []
+        for item in value:
+            text = self._speedread_text_value(item, "")
+            if text:
+                items.append(text)
+            if len(items) >= max_items:
+                break
+        return items or [fallback_text]
+
+    def _resolve_pdf_entry(self, file_key, metadata):
+        entry = metadata.get(file_key)
+        if not isinstance(entry, dict):
+            return None, None, None
+        pdf_local = entry.get("pdf_local") or entry.get("pdf") or ""
+        rel_disk = unquote(pdf_local)
+        abs_pdf = self._safe_rel(rel_disk)
+        if not abs_pdf or not os.path.isfile(abs_pdf):
+            return entry, rel_disk, None
+        return entry, rel_disk.replace("\\", "/"), abs_pdf
+
+    def _run_capture(self, cmd):
+        return subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+
+    def _read_pdf_page_count(self, abs_pdf):
+        result = self._run_capture(["pdfinfo", abs_pdf])
+        if result.returncode != 0:
+            return 0
+        match = re.search(r"^Pages:\s+(\d+)", result.stdout, re.IGNORECASE | re.MULTILINE)
+        return int(match.group(1)) if match else 0
+
+    def _extract_pdf_pages_text(self, abs_pdf, page_count):
+        result = self._run_capture(["pdftotext", "-layout", "-enc", "UTF-8", abs_pdf, "-"])
+        if result.returncode != 0:
+            detail = self._clean_page_text(result.stderr or result.stdout, 500)
+            raise RuntimeError(f"pdftotext 失败: {detail or '未知错误'}")
+        raw_pages = result.stdout.split("\f")
+        pages = [self._clean_page_text(page) for page in raw_pages]
+        while pages and not pages[-1]:
+            pages.pop()
+        if page_count and len(pages) < page_count:
+            pages.extend([""] * (page_count - len(pages)))
+        return pages
+
+    def _score_page_for_keywords(self, page_no, page_count, text, keywords):
+        lower = (text or "").lower()
+        score = 0
+        for keyword in keywords:
+            if keyword in lower:
+                score += 2
+        if "figure" in lower or "fig." in lower or "fig " in lower:
+            score += 2
+        if "table" in lower:
+            score += 2
+        if page_no <= 2:
+            score += 1
+        if page_count and page_no >= max(page_count - 1, 1) and ("conclusion" in lower or "discussion" in lower):
+            score += 1
+        return score
+
+    def _select_speedread_pages(self, page_texts, page_count):
+        if not page_count:
+            page_count = len(page_texts)
+        if page_count <= 0:
+            return []
+
+        role_rules = [
+            ("方法总览图", ["figure", "fig.", "fig ", "framework", "pipeline", "architecture", "overview", "method"]),
+            ("核心方法页", ["method", "approach", "module", "algorithm", "framework", "pipeline"]),
+            ("实验结果页", ["table", "result", "results", "experiment", "evaluation", "benchmark", "comparison"]),
+            ("分析/消融页", ["ablation", "analysis", "case study", "limitation", "discussion"]),
+        ]
+        page_payloads = []
+        for idx in range(page_count):
+            text = page_texts[idx] if idx < len(page_texts) else ""
+            page_payloads.append((idx + 1, text, (text or "").lower()))
+
+        used = set()
+        picked = []
+        for label, keywords in role_rules:
+            best = None
+            for page_no, text, lower in page_payloads:
+                if page_no in used or not lower.strip():
+                    continue
+                current_score = self._score_page_for_keywords(page_no, page_count, text, keywords)
+                if current_score <= 0:
+                    continue
+                if best is None or current_score > best[0]:
+                    best = (current_score, page_no, text)
+            if best is not None:
+                used.add(best[1])
+                picked.append({
+                    "page": best[1],
+                    "reason": label,
+                    "excerpt": self._clean_page_text(best[2], 900),
+                })
+
+        if len(picked) < SPEEDREAD_MAX_IMAGE_PAGES:
+            ranked = []
+            fallback_keywords = [
+                "figure", "fig.", "fig ", "table", "method", "approach", "experiment",
+                "evaluation", "benchmark", "ablation", "analysis", "results",
+            ]
+            for page_no, text, lower in page_payloads:
+                if page_no in used:
+                    continue
+                current_score = self._score_page_for_keywords(page_no, page_count, text, fallback_keywords)
+                if page_no == 1:
+                    current_score += 2
+                ranked.append((current_score, page_no, text))
+            ranked.sort(key=lambda item: (-item[0], item[1]))
+            for score, page_no, text in ranked:
+                if page_no in used:
+                    continue
+                used.add(page_no)
+                picked.append({
+                    "page": page_no,
+                    "reason": "关键页面" if score > 0 else "补充页面",
+                    "excerpt": self._clean_page_text(text, 900),
+                })
+                if len(picked) >= SPEEDREAD_MAX_IMAGE_PAGES:
+                    break
+
+        if not picked:
+            for page_no in sorted({1, min(2, page_count), min(4, page_count)}):
+                if not page_no:
+                    continue
+                text = page_texts[page_no - 1] if page_no - 1 < len(page_texts) else ""
+                picked.append({
+                    "page": page_no,
+                    "reason": "默认页",
+                    "excerpt": self._clean_page_text(text, 900),
+                })
+
+        picked.sort(key=lambda item: item["page"])
+        return picked[:SPEEDREAD_MAX_IMAGE_PAGES]
+
+    def _render_speedread_page_image(self, abs_pdf, file_key, page_no):
+        paper_hash = hashlib.sha1(file_key.encode("utf-8")).hexdigest()[:16]
+        cache_dir = os.path.join(WORKSPACE_ROOT, SPEEDREAD_CACHE_DIR, paper_hash)
+        os.makedirs(cache_dir, exist_ok=True)
+
+        base_name = f"page_{page_no:03d}"
+        target_jpg = os.path.join(cache_dir, base_name + ".jpg")
+        target_png = os.path.join(cache_dir, base_name + ".png")
+        prefix = os.path.join(cache_dir, base_name)
+
+        cmd = [
+            "pdftoppm",
+            "-f", str(page_no),
+            "-l", str(page_no),
+            "-singlefile",
+            "-scale-to", str(SPEEDREAD_IMAGE_WIDTH),
+            "-jpeg",
+            abs_pdf,
+            prefix,
+        ]
+        result = self._run_capture(cmd)
+        if result.returncode != 0 or not os.path.exists(target_jpg):
+            fallback = [
+                "pdftoppm",
+                "-f", str(page_no),
+                "-l", str(page_no),
+                "-singlefile",
+                "-scale-to", str(SPEEDREAD_IMAGE_WIDTH),
+                "-png",
+                abs_pdf,
+                prefix,
+            ]
+            result = self._run_capture(fallback)
+            if result.returncode != 0 or not os.path.exists(target_png):
+                detail = self._clean_page_text(result.stderr or result.stdout, 300)
+                raise RuntimeError(f"渲染第 {page_no} 页失败: {detail or '未知错误'}")
+            return os.path.relpath(target_png, WORKSPACE_ROOT).replace(os.sep, "/")
+        return os.path.relpath(target_jpg, WORKSPACE_ROOT).replace(os.sep, "/")
+
+    def _build_speedread_grounding_text(self, page_texts, candidate_pages):
+        page_count = len(page_texts)
+        chosen = set()
+        for page_no in [1, 2, 3, page_count - 1, page_count]:
+            if 1 <= page_no <= page_count:
+                chosen.add(page_no)
+        for item in candidate_pages:
+            page_no = int(item.get("page") or 0)
+            if 1 <= page_no <= page_count:
+                chosen.add(page_no)
+
+        key_terms = ["abstract", "introduction", "method", "approach", "experiment", "evaluation", "conclusion", "limitation"]
+        for term in key_terms:
+            for idx, text in enumerate(page_texts, start=1):
+                if term in (text or "").lower():
+                    chosen.add(idx)
+                    break
+
+        blocks = []
+        total_chars = 0
+        for page_no in sorted(chosen):
+            text = page_texts[page_no - 1] if page_no - 1 < len(page_texts) else ""
+            cleaned = self._clean_page_text(text, 3600)
+            if not cleaned:
+                continue
+            block = f"=== Page {page_no} ===\n{cleaned}\n"
+            if total_chars + len(block) > SPEEDREAD_MAX_SOURCE_CHARS:
+                break
+            blocks.append(block)
+            total_chars += len(block)
+        return "\n".join(blocks)
+
+    def _normalize_chat_endpoint(self, base_url):
+        url = (base_url or "").strip()
+        if not url:
+            raise ValueError("未配置 API 地址")
+        url = url.rstrip("/")
+        if url.endswith("/chat/completions"):
+            return url
+        if url.endswith("/v1"):
+            return url + "/chat/completions"
+        return url + "/v1/chat/completions"
+
+    def _image_to_data_url(self, rel_path):
+        abs_path = self._safe_rel(rel_path)
+        if not abs_path or not os.path.isfile(abs_path):
+            return None
+        with open(abs_path, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode("ascii")
+        mime = "image/jpeg" if rel_path.lower().endswith(".jpg") else "image/png"
+        return f"data:{mime};base64,{encoded}"
+
+    def _extract_completion_text(self, payload):
+        if not isinstance(payload, dict):
+            return ""
+        choices = payload.get("choices")
+        if isinstance(choices, list) and choices:
+            message = choices[0].get("message") or {}
+            content = message.get("content")
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                parts = []
+                for item in content:
+                    if isinstance(item, dict) and isinstance(item.get("text"), str):
+                        parts.append(item.get("text"))
+                return "\n".join(parts)
+        output = payload.get("output")
+        if isinstance(output, list):
+            parts = []
+            for item in output:
+                if not isinstance(item, dict):
+                    continue
+                for content in item.get("content") or []:
+                    if isinstance(content, dict) and isinstance(content.get("text"), str):
+                        parts.append(content.get("text"))
+            if parts:
+                return "\n".join(parts)
+        if isinstance(payload.get("content"), str):
+            return payload.get("content")
+        return ""
+
+    def _extract_json_block(self, text):
+        raw = (text or "").strip()
+        if raw.startswith("```"):
+            raw = re.sub(r"^```(?:json)?\s*", "", raw)
+            raw = re.sub(r"\s*```$", "", raw)
+        try:
+            return json.loads(raw)
+        except Exception:
+            pass
+
+        start = raw.find("{")
+        while start != -1:
+            depth = 0
+            in_string = False
+            escape = False
+            for idx in range(start, len(raw)):
+                ch = raw[idx]
+                if in_string:
+                    if escape:
+                        escape = False
+                    elif ch == "\\":
+                        escape = True
+                    elif ch == '"':
+                        in_string = False
+                    continue
+                if ch == '"':
+                    in_string = True
+                elif ch == "{":
+                    depth += 1
+                elif ch == "}":
+                    depth -= 1
+                    if depth == 0:
+                        candidate = raw[start:idx + 1]
+                        try:
+                            return json.loads(candidate)
+                        except Exception:
+                            break
+            start = raw.find("{", start + 1)
+        raise ValueError("模型返回中未找到合法 JSON")
+
+    def _normalize_speedread_payload(self, parsed, candidate_pages):
+        candidate_by_page = {int(item.get("page") or 0): item for item in candidate_pages}
+        raw_figures = parsed.get("core_figures") if isinstance(parsed, dict) else None
+        figures = []
+        if isinstance(raw_figures, list):
+            for item in raw_figures:
+                if not isinstance(item, dict):
+                    continue
+                try:
+                    page_no = int(item.get("page") or 0)
+                except (TypeError, ValueError):
+                    continue
+                if page_no not in candidate_by_page:
+                    continue
+                asset = candidate_by_page[page_no]
+                figures.append({
+                    "page": page_no,
+                    "title": self._speedread_text_value(item.get("title")),
+                    "what_to_look": self._speedread_text_value(item.get("what_to_look")),
+                    "what_it_proves": self._speedread_text_value(item.get("what_it_proves")),
+                    "why_important": self._speedread_text_value(item.get("why_important")),
+                    "image_path": asset.get("image_path", ""),
+                    "reason": asset.get("reason", ""),
+                })
+
+        if not figures:
+            for asset in candidate_pages[:3]:
+                figures.append({
+                    "page": asset.get("page"),
+                    "title": asset.get("reason") or "关键页面",
+                    "what_to_look": "优先看该页的主图、表格标题与图注，再回到正文对应段落交叉验证。",
+                    "what_it_proves": "自动生成未给出更细图表结论时，请以图注和正文原文为准。",
+                    "why_important": "该页在自动筛选时被认为最接近方法或实验核心。",
+                    "image_path": asset.get("image_path", ""),
+                    "reason": asset.get("reason", ""),
+                })
+
+        return {
+            "one_sentence": self._speedread_text_value(parsed.get("one_sentence") if isinstance(parsed, dict) else None),
+            "quick_takeaways": self._speedread_list_value(parsed.get("quick_takeaways") if isinstance(parsed, dict) else None, max_items=5),
+            "problem_and_motivation": self._speedread_text_value(parsed.get("problem_and_motivation") if isinstance(parsed, dict) else None),
+            "method_overview": self._speedread_text_value(parsed.get("method_overview") if isinstance(parsed, dict) else None),
+            "method_steps": self._speedread_list_value(parsed.get("method_steps") if isinstance(parsed, dict) else None, max_items=6),
+            "core_figures": figures,
+            "experiment_read": self._speedread_text_value(parsed.get("experiment_read") if isinstance(parsed, dict) else None),
+            "contributions": self._speedread_list_value(parsed.get("contributions") if isinstance(parsed, dict) else None, max_items=5),
+            "limitations": self._speedread_list_value(parsed.get("limitations") if isinstance(parsed, dict) else None, max_items=5),
+            "deep_read_suggestions": self._speedread_list_value(parsed.get("deep_read_suggestions") if isinstance(parsed, dict) else None, max_items=6),
+        }
+
+    def _request_speedread_from_model(self, api_config, paper_meta, grounding_text, candidate_pages):
+        api_key = (api_config.get("apiKey") or "").strip()
+        model = (api_config.get("model") or "").strip()
+        if not api_key:
+            raise ValueError("未配置 API Key")
+        if not model:
+            raise ValueError("未配置模型名称")
+
+        endpoint = self._normalize_chat_endpoint(api_config.get("apiBaseUrl"))
+        try:
+            timeout_sec = int(api_config.get("timeoutSec") or 180)
+        except (TypeError, ValueError):
+            timeout_sec = 180
+        timeout_sec = max(30, min(timeout_sec, 600))
+
+        prompt = (
+            "你是一个只依据论文原文证据生成内容的论文速读助手。\n"
+            "任务目标：帮助用户快速理解论文，不要生成泛泛摘要。\n"
+            "写作要求：\n"
+            "1. 全部使用中文，信息密度高，但要可读。\n"
+            "2. 只依据提供的论文文本片段与候选页图像，不得补充外部知识。\n"
+            "3. 若论文没有明确说明某点，必须明确写“论文中未明确说明”。\n"
+            "4. 不要夸奖论文，不要写营销式语言，不要把摘要直译成中文。\n"
+            "5. 重点讲清：研究问题、动机、方法怎么工作、实验结果说明了什么。\n"
+            "6. 图表解读部分要告诉读者该看哪一页、看什么、它支持了作者什么论点。\n"
+            "7. 仅输出一个合法 JSON 对象，不要输出 Markdown 代码块。\n\n"
+            "JSON schema:\n"
+            "{\n"
+            "  \"one_sentence\": \"一句话总结\",\n"
+            "  \"quick_takeaways\": [\"省流点1\", \"省流点2\"],\n"
+            "  \"problem_and_motivation\": \"问题与动机\",\n"
+            "  \"method_overview\": \"方法速读\",\n"
+            "  \"method_steps\": [\"步骤1\", \"步骤2\"],\n"
+            "  \"core_figures\": [\n"
+            "    {\n"
+            "      \"page\": 3,\n"
+            "      \"title\": \"图/表标题的中文概括\",\n"
+            "      \"what_to_look\": \"读图时要先看什么\",\n"
+            "      \"what_it_proves\": \"它支持了什么结论\",\n"
+            "      \"why_important\": \"为什么这张图/表值得优先看\"\n"
+            "    }\n"
+            "  ],\n"
+            "  \"experiment_read\": \"实验速读\",\n"
+            "  \"contributions\": [\"贡献1\", \"贡献2\"],\n"
+            "  \"limitations\": [\"局限1\", \"局限2\"],\n"
+            "  \"deep_read_suggestions\": [\"建议先精读哪一节/哪几页及原因\"]\n"
+            "}\n\n"
+            f"论文基础信息：\n标题：{paper_meta.get('title', '')}\n"
+            f"作者：{paper_meta.get('authors', '')}\n"
+            f"年份：{paper_meta.get('year', '')}\n"
+            f"会议/期刊：{paper_meta.get('venue', '')}\n\n"
+            "候选关键页（如果你在 core_figures 中引用 page，必须从这些候选页里选）：\n"
+            + "\n".join(
+                f"- page {item.get('page')}: {item.get('reason')}\n  摘录: {self._clean_page_text(item.get('excerpt'), 500)}"
+                for item in candidate_pages
+            )
+            + "\n\n论文文本片段：\n"
+            + grounding_text
+        )
+
+        content_items = [{"type": "text", "text": prompt}]
+        has_image_inputs = False
+        for item in candidate_pages:
+            image_path = item.get("image_path")
+            if not image_path:
+                continue
+            data_url = self._image_to_data_url(image_path)
+            if not data_url:
+                continue
+            has_image_inputs = True
+            content_items.append({
+                "type": "text",
+                "text": f"候选页 page {item.get('page')}，自动标签：{item.get('reason')}。阅读重点：先结合这一页图表与前述文本片段做交叉解释。",
+            })
+            content_items.append({
+                "type": "image_url",
+                "image_url": {"url": data_url},
+            })
+
+        # 绕过系统代理（Clash/v2ray 等本地代理会拦截 urllib 请求导致失败）
+        _no_proxy_opener = request.build_opener(request.ProxyHandler({}))
+
+        def send_chat_request(user_content, request_mode):
+            payload = {
+                "model": model,
+                "temperature": 0.2,
+                "max_tokens": 2200,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "你是严格依据论文证据输出 JSON 的论文速读助手。",
+                    },
+                    {
+                        "role": "user",
+                        "content": user_content,
+                    },
+                ],
+            }
+
+            req = request.Request(
+                endpoint,
+                data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Authorization": f"Bearer {api_key}",
+                    "Accept": "application/json",
+                    "Accept-Encoding": "identity",
+                },
+                method="POST",
+            )
+
+            _log(f"⚡ 发起速读请求: 模型={model}, 模式={request_mode}, 端点={endpoint}, 超时={timeout_sec}秒")
+            try:
+                with _no_proxy_opener.open(req, timeout=timeout_sec) as resp:
+                    body = resp.read().decode("utf-8", errors="replace")
+                    _log(f"⚡ 收到模型回复，长度={len(body)}")
+            except error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace") if hasattr(exc, "read") else str(exc)
+                _log(f"❌ HTTP 错误 {exc.code}: {detail[:200]}")
+                raise RuntimeError(f"模型接口返回 HTTP {exc.code}: {self._clean_page_text(detail, 600)}")
+            except error.URLError as exc:
+                _log(f"❌ 连接失败: {exc.reason}")
+                raise RuntimeError(f"无法连接模型接口: {exc.reason}")
+            except Exception as exc:
+                _log(f"❌ 请求异常: {exc}")
+                raise RuntimeError(f"请求模型接口异常: {exc}")
+
+            try:
+                data = json.loads(body)
+                _log("⚡ JSON 解析成功")
+            except json.JSONDecodeError as exc:
+                _log(f"❌ JSON 解析失败: {exc}, 响应头={len(body)} 字符")
+                _log(f"   响应片段: {body[:500]}")
+                raise RuntimeError(f"模型接口返回了无效 JSON，可能是错误或网关问题。详情: {self._clean_page_text(str(exc), 300)}")
+
+            content = self._extract_completion_text(data)
+            if not content:
+                _log(f"❌ 无法从响应中提取文本。响应结构: {json.dumps(data, ensure_ascii=False)[:500]}")
+                raise RuntimeError("模型接口返回成功，但没有生成文本内容。可能原因：响应格式不兼容、被模型拒绝、或超过限制。")
+
+            _log(f"⚡ 提取生成文本: {len(content)} 字符")
+            return self._extract_json_block(content), request_mode
+
+        def should_fallback_to_text_only(message):
+            lowered = (message or "").lower()
+            if not has_image_inputs:
+                return False
+            if any(code in lowered for code in ("http 401", "http 403", "http 404", "http 429")):
+                return False
+            return any(token in lowered for token in (
+                "http 400",
+                "http 415",
+                "http 422",
+                "image",
+                "image_url",
+                "vision",
+                "multimodal",
+                "unsupported",
+                "content",
+                "messages",
+                "没有生成文本内容",
+            ))
+
+        if has_image_inputs:
+            try:
+                return send_chat_request(content_items, "multimodal")
+            except RuntimeError as exc:
+                if not should_fallback_to_text_only(str(exc)):
+                    raise
+                _log("⚠️ 当前接口可能不支持图像输入或多模态消息，已自动降级为纯文本速读重试")
+
+        return send_chat_request(prompt, "text-only")
+
+    def handle_generate_speedread(self, payload):
+        file_key = (payload.get("file_key") or "").strip()
+        api_config = payload.get("apiConfig") or {}
+        force = bool(payload.get("force"))
+        if not file_key:
+            self._send_json(400, {"ok": False, "error": "缺少 file_key"})
+            return
+        if not isinstance(api_config, dict):
+            self._send_json(400, {"ok": False, "error": "apiConfig 格式不正确"})
+            return
+
+        try:
+            metadata = self._load_metadata_dict()
+        except Exception as exc:
+            self._send_json(500, {"ok": False, "error": f"读取 metadata 失败: {exc}"})
+            return
+
+        entry, rel_disk, abs_pdf = self._resolve_pdf_entry(file_key, metadata)
+        if not entry:
+            self._send_json(404, {"ok": False, "error": f"找不到论文: {file_key}"})
+            return
+        if not abs_pdf:
+            self._send_json(404, {"ok": False, "error": f"PDF 不存在: {rel_disk}"})
+            return
+
+        existing = entry.get("speed_read") if isinstance(entry.get("speed_read"), dict) else {}
+        if existing.get("status") == "success" and not force:
+            self._send_json(200, {"ok": True, "cached": True, "speed_read": existing})
+            return
+
+        now_iso = datetime.now().isoformat(timespec="seconds")
+        generating_state = {
+            "status": "running",
+            "generated_at": existing.get("generated_at") or now_iso,
+            "updated_at": now_iso,
+            "model": (api_config.get("model") or "").strip(),
+            "error": "",
+        }
+        try:
+            current = metadata.get(file_key) or {}
+            current["speed_read"] = generating_state
+            metadata[file_key] = current
+            self._atomic_write_metadata(metadata)
+        except Exception as exc:
+            self._send_json(500, {"ok": False, "error": f"写入生成状态失败: {exc}"})
+            return
+
+        try:
+            page_count = self._read_pdf_page_count(abs_pdf)
+            page_texts = self._extract_pdf_pages_text(abs_pdf, page_count)
+            if not page_count:
+                page_count = len(page_texts)
+
+            candidate_pages = self._select_speedread_pages(page_texts, page_count)
+            enriched_candidates = []
+            for item in candidate_pages:
+                enriched = dict(item)
+                try:
+                    enriched["image_path"] = self._render_speedread_page_image(abs_pdf, file_key, int(item.get("page") or 0))
+                except Exception as img_exc:
+                    _log(f"⚠️ 速读渲染第 {item.get('page')} 页失败: {img_exc}")
+                    enriched["image_path"] = ""
+                enriched_candidates.append(enriched)
+
+            grounding_text = self._build_speedread_grounding_text(page_texts, enriched_candidates)
+            if not grounding_text and not any(item.get("image_path") for item in enriched_candidates):
+                raise RuntimeError("无法从 PDF 中提取可用文本或页面图像")
+
+            parsed, request_mode = self._request_speedread_from_model(api_config, entry, grounding_text, enriched_candidates)
+            normalized = self._normalize_speedread_payload(parsed, enriched_candidates)
+            success_state = {
+                "status": "success",
+                "generated_at": existing.get("generated_at") or now_iso,
+                "updated_at": datetime.now().isoformat(timespec="seconds"),
+                "model": (api_config.get("model") or "").strip(),
+                "api_base_url": self._normalize_chat_endpoint(api_config.get("apiBaseUrl")),
+                "request_mode": request_mode,
+                "page_count": page_count,
+                "candidate_pages": [
+                    {
+                        "page": item.get("page"),
+                        "reason": item.get("reason", ""),
+                        "image_path": item.get("image_path", ""),
+                    }
+                    for item in enriched_candidates
+                ],
+                "content": normalized,
+            }
+
+            metadata = self._load_metadata_dict()
+            current = metadata.get(file_key) or {}
+            current["speed_read"] = success_state
+            metadata[file_key] = current
+            self._atomic_write_metadata(metadata)
+            _log(f"⚡ 速读生成完成: {file_key}")
+            self._send_json(200, {"ok": True, "speed_read": success_state})
+        except Exception as exc:
+            error_state = {
+                "status": "error",
+                "generated_at": existing.get("generated_at") or now_iso,
+                "updated_at": datetime.now().isoformat(timespec="seconds"),
+                "model": (api_config.get("model") or "").strip(),
+                "error": self._clean_page_text(str(exc), 600),
+            }
+            try:
+                metadata = self._load_metadata_dict()
+                current = metadata.get(file_key) or {}
+                current["speed_read"] = error_state
+                metadata[file_key] = current
+                self._atomic_write_metadata(metadata)
+            except Exception as write_exc:
+                _log(f"⚠️ 写入速读错误状态失败: {write_exc}")
+            _log(f"❌ 速读生成失败: {file_key} - {exc}")
+            self._send_json(500, {"ok": False, "error": self._clean_page_text(str(exc), 600), "speed_read": error_state})
+
+    def handle_test_speedread_config(self, payload):
+        api_config = payload.get("apiConfig") or {}
+        if not isinstance(api_config, dict):
+            self._send_json(400, {"ok": False, "error": "apiConfig 格式不正确"})
+            return
+
+        test_paper_meta = {
+            "title": "接口测试论文",
+            "authors": "OpenPaper",
+            "year": "2026",
+            "venue": "Config Test",
+        }
+        test_grounding_text = (
+            "这是一段仅用于测试接口连通性和模型可用性的短文本。"
+            "请严格按要求输出 JSON，不需要引用外部知识。"
+            "论文提出了一个测试方法，并报告它在实验中有效。"
+        )
+        try:
+            parsed, request_mode = self._request_speedread_from_model(api_config, test_paper_meta, test_grounding_text, [])
+            normalized = self._normalize_speedread_payload(parsed, [])
+            self._send_json(200, {
+                "ok": True,
+                "request_mode": request_mode,
+                "preview": normalized.get("one_sentence") or "测试成功",
+            })
+        except Exception as exc:
+            self._send_json(500, {"ok": False, "error": self._clean_page_text(str(exc), 600)})
 
     def handle_get_log(self, query):
         try:

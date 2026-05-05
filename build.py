@@ -234,6 +234,7 @@ for rel_path, fname in pdf_files:
         "read": info.get("read", False),
         "bib": info.get("bib", ""),
         "notes": info.get("notes", ""),
+        "speed_read": info.get("speed_read"),
         "added_at": added_at,
     }
 

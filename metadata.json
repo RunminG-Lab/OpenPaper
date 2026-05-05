@@ -13,6 +13,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:41"
   },
   "embodied ai/aligning_cyber_space_with_physical_world_a_comprehensive_survey_on_embodied_ai.pdf": {
@@ -30,6 +31,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:41"
   },
   "embodied ai/gzfuzz_issta25_reinforcement_learning-based_fuzz_testing_for_the_gazebo_robotic_simulator.pdf": {
@@ -48,6 +50,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-04-19T12:53:02"
   },
   "embodied ai/habitat_2_nip21_training_home_assistants_to_rearrange_their_habitat.pdf": {
@@ -64,6 +67,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "embodied ai/habitat_a_platform_for_embodied_ai_research_iccv_2019_paper.pdf": {
@@ -80,6 +84,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "embodied ai/igibson_iros21_a_simulation_environment_for_interactive_tasks_in_large_realistic_scenes.pdf": {
@@ -96,6 +101,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "embodied ai/legent_acl24_openplatform_for_embodied_agents.pdf": {
@@ -113,6 +119,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "embodied ai/mastering diverse domains through world models.pdf": {
@@ -131,6 +138,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "embodied ai/physframe_fse21_type_checking_physical_frames_of_reference_for_robotic_systems.pdf": {
@@ -147,6 +155,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:41"
   },
   "embodied ai/robofuzz_fse25_fuzzing_robotic_systems_over_robot_operating_system_(ros)_for_finding_correctness_bugs.pdf": {
@@ -163,6 +172,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:41"
   },
   "embodied ai/robothor anopensimulation-to-real embodied ai platform.pdf": {
@@ -179,6 +189,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "embodied ai/roscallbax_fse25_statically_detecting_inconsistencies_in_callbackfunction_setup_of_robotic_systems.pdf": {
@@ -195,6 +206,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:41"
   },
   "embodied ai/threedworld_ a platform for interactive multi-modal physical simulation.pdf": {
@@ -211,6 +223,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "embodied ai/tifs25_compromising_llm_driven_embodied_agents_with_contextual_backdoor_attacks.pdf": {
@@ -228,6 +241,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "embodied ai/unity rl playground_a versatile reinforcement learning  framework for mobile robots.pdf": {
@@ -246,6 +260,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "embodied ai/vlatest_fse25_testing_and_evaluating_vision-language-action_models_for_robotic_manipulation.pdf": {
@@ -264,6 +279,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:41"
   },
   "embodied ai/voyager_an open-ended embodied agent with large language models.pdf": {
@@ -281,6 +297,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "game/an evolutionary approach for generating software models_the case of kromaia in game software engineering.pdf": {
@@ -297,6 +314,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "game/fse25comp_incorporating_multiple_self-adaptive_agents_in_games.pdf": {
@@ -313,6 +331,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "game/mad4go_fse25comp_multi-agent_differential_testing_for_the_game_of_go.pdf": {
@@ -330,6 +349,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "game/unit test generation using large language models for unity game development.pdf": {
@@ -348,6 +368,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "game/_a peek into the metaverse  detecting 3d model clones in mobile games.pdf": {
@@ -365,6 +386,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "game testing/an agent-based approach to automated game testing_an experience report.pdf": {
@@ -381,6 +403,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "game testing/aplib_tactical agents for testing computer games.pdf": {
@@ -397,6 +420,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "game testing/augmenting automated game testing with deep reinforcement learning.pdf": {
@@ -414,6 +438,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "game testing/bugcraft_ase25_agents_in_the_sandbox_end-to-end_crash_bug_reproduction_for_minecraft.pdf": {
@@ -431,6 +456,7 @@
     "read": false,
     "bib": "",
     "notes": "Minecraft 崩溃bug复现",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "game testing/glib  towards automated test oracle for graphically-rich applications.pdf": {
@@ -447,6 +473,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "game testing/navigation and exploration in 3d-game automated play testing.pdf": {
@@ -464,6 +491,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "game testing/search-based automated play testing of computer games_a model-based approach.pdf": {
@@ -481,6 +509,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "game testing/sojourner_under_sabotage_issta25_teaching_software_testing_and_debugging_with_the_serious_game_sojourner_under_sabotage.pdf": {
@@ -497,6 +526,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "game testing/towards agent-based testing of 3d games using reinforcement learning.pdf": {
@@ -514,6 +544,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "game testing/using an agent-based approach for robust automated testing of computer games.pdf": {
@@ -530,6 +561,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "game testing/using reinforcement learning for load testing of video games.pdf": {
@@ -547,6 +579,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "game testing/widget detection-based testing for industrial mobile games.pdf": {
@@ -563,6 +596,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "game testing/wuji_automatic online combat game testing using evolutionary deep reinforcement learning.pdf": {
@@ -580,6 +614,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "gui testing/autoconsis_automatic gui-driven data inconsistency detection of mobile apps.pdf": {
@@ -596,6 +631,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "gui testing/automatically detecting visual bugs in html5 canvas games.pdf": {
@@ -613,6 +649,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "gui testing/can cooperative multi-agent reinforcement learning boost automatic web testing an exploratory study.pdf": {
@@ -630,6 +667,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "gui testing/deeply reinforcing android gui testing with deep reinforcement learning.pdf": {
@@ -647,6 +685,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "gui testing/fastbot2_reusable automated model-based gui testing for android enhanced by reinforcement learning.pdf": {
@@ -665,6 +704,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "gui testing/guided, stochastic model-based gui testing of android apps.pdf": {
@@ -682,6 +722,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "gui testing/guipilot_issta25_a_consistency-based_mobile_gui_testing_approach_for_detecting_application-specific_bugs.pdf": {
@@ -698,6 +739,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "gui testing/item_issta25_intention-based_gui_test_migration_for_mobile_apps_using_large_language_models.pdf": {
@@ -715,6 +757,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "gui testing/semantic gui scene learning and video alignment for detecting duplicate video-based bug reports.pdf": {
@@ -731,6 +774,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:42"
   },
   "llm/chatdev_communicative_agents_for_software_development.pdf": {
@@ -747,6 +791,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-11-23T10:09:04"
   },
   "metamorphic testing/issta25_improving_deep_learning_framework_testing_with_model-level_metamorphic_testing.pdf": {
@@ -763,6 +808,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "metamorphic testing/met-mapf_tosem24_ametamorphic_testing_approach_formulti-agent_path_finding_algorithms.pdf": {
@@ -779,6 +825,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "model-based testing/an automated model based testing approach for platform games.pdf": {
@@ -795,6 +842,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "model-based testing/sbst22_evombt_at_the_sbst_2022_tool_competition.pdf": {
@@ -811,6 +859,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "rl/dota 2 with large scale deep reinforcement learning.pdf": {
@@ -828,6 +877,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "survey/a survey of performance optimization for mobile application.pdf": {
@@ -844,6 +894,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "survey/a survey of video game testing.pdf": {
@@ -861,6 +912,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "survey/a survey on vision-language-action models for embodied ai .pdf": {
@@ -879,6 +931,7 @@
     "read": true,
     "bib": "",
     "notes": "VLA Survey, 介绍了具身智能相关的VLA技术应用",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "survey/arxiv25_a survey on (m)llm-based gui agents.pdf": {
@@ -897,6 +950,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "survey/know your bugs_a survey of issues in automated.pdf": {
@@ -914,6 +968,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "unsorted/an app performance optimization advisor for mobile device app.pdf": {
@@ -930,6 +985,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/analyzing and detecting virtual_augmented reality performance issues with large language models.pdf": {
@@ -948,6 +1004,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/ataxonomy_of_interaction_techniques_for_immersive_augmented_reality_based_on_an_iterative_literature_review.pdf": {
@@ -965,6 +1022,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/bug prediction using source code embedding based on doc2vec.pdf": {
@@ -981,6 +1039,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/chain-of-thought prompting elicits reasoning in large language models.pdf": {
@@ -997,6 +1056,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/codet5 identifier-aware unified pre-trained encoder-decoder models for code understanding and generation.pdf": {
@@ -1013,6 +1073,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/demystifying mobile extended reality in web browsers  how far can we go.pdf": {
@@ -1030,6 +1091,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/development of real-time qa_qc tools for aec in unity.pdf": {
@@ -1046,6 +1108,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/efficient incremental code coverage analysis for regression test suites.pdf": {
@@ -1062,6 +1125,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/efish'nsea_unity game set for learning software performance issues root causes and resolutions.pdf": {
@@ -1079,6 +1143,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/element-aware fine-tuning of vision-language models for cost-efficient gui testing in an industrial setting.pdf": {
@@ -1096,6 +1161,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/embodied bench.pdf": {
@@ -1113,6 +1179,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/evombt_evolutionary model based testing.pdf": {
@@ -1129,6 +1196,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/exploring game space using survival analysis.pdf": {
@@ -1146,6 +1214,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/exploring_and_analyzing_virtualaugmented_reality_performance_issues_based_on_code_large_language_models.pdf": {
@@ -1164,6 +1233,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/general and practical property-based testing for android apps.pdf": {
@@ -1180,6 +1250,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/improving playtesting coverage via curiosity driven reinforcement learning agents.pdf": {
@@ -1197,6 +1268,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/large language models for software engineering_ a systematic literature review.pdf": {
@@ -1214,6 +1286,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/learning performance optimization from code changes for android apps.pdf": {
@@ -1230,6 +1303,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/less cybersickness, please demystifying and detecting stereoscopic visual inconsistencies in virtual reality apps.pdf": {
@@ -1246,6 +1320,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/make llm a testing expert_ bringing human-like interaction to mobile gui testing via functionality-aware decisions.pdf": {
@@ -1263,6 +1338,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/make llm a testing expert_bringing human-like interaction to mobile gui testing via functionality-aware decisions.pdf": {
@@ -1280,6 +1356,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/mobile application processors_techniques for software power-performance optimization.pdf": {
@@ -1296,6 +1373,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/model-based gui testing for harmonyos apps.pdf": {
@@ -1313,6 +1391,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/motorease_automated detection of motor impairment accessibility issues in mobile app uis.pdf": {
@@ -1329,6 +1408,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/navigating mobile testing evaluation_a comprehensive statistical analysis of android gui testing metrics.pdf": {
@@ -1346,6 +1426,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/optimizing immersion_analyzing  graphics and performance  considerations in unity3d  vr development.pdf": {
@@ -1363,6 +1444,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/ovrseen auditing network traffic and privacy policies in oculus vr.pdf": {
@@ -1379,6 +1461,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/owl eyes_spotting ui display issues via visual understanding.pdf": {
@@ -1395,6 +1478,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/performance analysis and optimization techniques in unity 3d.pdf": {
@@ -1412,6 +1496,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/performance optimization opportunities in the android software stack.pdf": {
@@ -1428,6 +1513,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/playing without paying detecting vulnerable payment verification in native binaries of unity mobile games.pdf": {
@@ -1445,6 +1531,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/procedural game level design to trigger spatial exploration.pdf": {
@@ -1461,6 +1548,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/research on key technologies for deep optimization  of unity based scenarios.pdf": {
@@ -1478,6 +1566,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/research on the 3d game scene optimization of mobile phone based on the unity 3d engine.pdf": {
@@ -1495,6 +1584,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/research on unity scene optimization based on fast lod technique performance comparison on android mobile platform.pdf": {
@@ -1512,6 +1602,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/revitalizing codequest mobile app_performance optimization for immersive oop learning.pdf": {
@@ -1529,6 +1620,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/safety of embodied navigation_a survey.pdf": {
@@ -1546,6 +1638,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/secure multi-user content sharing for augmented reality applications.pdf": {
@@ -1562,6 +1655,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/semantic tree-based 3d scene model recognition.pdf": {
@@ -1578,6 +1672,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/smartfuzz making smart contract fuzzing smarter via state-aware feedback.pdf": {
@@ -1594,6 +1689,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/software testing for extended reality applications_a systematic mapping study.pdf": {
@@ -1611,6 +1707,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/study of methodology of testing mobile games based on ttcn-3.pdf": {
@@ -1628,6 +1725,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/technical challenges of deploying reinforcement learning agents for game testing in aaa games.pdf": {
@@ -1645,6 +1743,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/towards automated video game testing_still a long way to go.pdf": {
@@ -1662,6 +1761,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/transformers_state-of-the-art natural language processing.pdf": {
@@ -1678,6 +1778,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/tree of thought_deliberate problem solving with large language models.pdf": {
@@ -1694,6 +1795,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/unity-optimizations-for-x86-android-v2-92.pdf": {
@@ -1711,6 +1813,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/unity-performance-optimizations-best-practices-630893.pdf": {
@@ -1728,6 +1831,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/video game automated testing approaches_an assessment framework.pdf": {
@@ -1745,6 +1849,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/virtual reality genres_comparing preferences in immersive experiences and games.pdf": {
@@ -1762,6 +1867,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/virtual reality toolkit for the unity game engine.pdf": {
@@ -1779,6 +1885,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/vr.net_ a real-world dataset for virtual reality motion sickness research.pdf": {
@@ -1795,6 +1902,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/when the user is inside the user interface an empirical study of ui security properties in augmented reality.pdf": {
@@ -1812,6 +1920,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:45"
   },
   "unsorted/_a study of user privacy in android mobile ar apps.pdf": {
@@ -1828,6 +1937,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/_how developers optimize virtual reality applications a study of optimization commits in open source unity projects.pdf": {
@@ -1845,6 +1955,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "unsorted/_re methods for virtual reality software product development a mapping study.pdf": {
@@ -1862,6 +1973,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:44"
   },
   "vr/a test automation framework for user interaction.pdf": {
@@ -1878,6 +1990,7 @@
     "read": false,
     "bib": "",
     "notes": "workshop",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/adcube webvr ad fraud and practical confinement of third-party ads.pdf": {
@@ -1894,6 +2007,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/agent-based testing of extended reality systems.pdf": {
@@ -1910,6 +2024,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/an_empirical_study_on_meta_virtual_reality_applications_security_and_privacy_perspectives.pdf": {
@@ -1926,6 +2041,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/an_empirical_study_on_oculus_virtual_reality_applications_security_and_privacy_perspectives.pdf": {
@@ -1942,6 +2058,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-11-23T10:09:05"
   },
   "vr/arxiv24_analyzing_multimodal_interaction_strategies_for_llm-assisted_manipulation_of_3d_scenes.pdf": {
@@ -1959,6 +2076,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/arxiv24_smore_enhancing_object_manipulation_and_organization_in_mixed_reality_spaces_with_llms_and_generative_ai.pdf": {
@@ -1976,6 +2094,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/arxiv25_survey_of_large_language_models_in_extended_reality_technical_paradigms_and_application_frontiers.pdf": {
@@ -1993,6 +2112,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/ase24comp_an_empirical_study_on_current_practices_and_challenges_of_core_ar_vr_developers.pdf": {
@@ -2010,6 +2130,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/ase24comp_a_study_of_code_clone_on_open_source_vr_software.pdf": {
@@ -2026,6 +2147,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/automated usability evaluation of virtual reality application.pdf": {
@@ -2042,6 +2164,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-11-23T10:09:05"
   },
   "vr/autovr_automated ui exploration for detecting sensitive data flow exposures in virtual reality apps.pdf": {
@@ -2059,6 +2182,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-11-23T10:09:05"
   },
   "vr/can_virtual_reality_protect_users_from_keystroke_inference_attacks.pdf": {
@@ -2075,6 +2199,7 @@
     "read": true,
     "bib": "",
     "notes": "1. 攻击者（VR用户）可通过观察他人虚拟形象，还原另一VR用户输入的内容。作者对15名被测试者进行了攻击并且成功还原超过86%-98% of typed keys 和 98% of the meaning of the original typed content",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/ismar24_xair_an_xr_platform_that_integrates_large_language_models_with_the_physical_world.pdf": {
@@ -2092,6 +2217,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/iva23_sushi_with_einstein_enhancing_hybrid_live_events_with_llm-based_virtual_humans.pdf": {
@@ -2109,6 +2235,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/penetration_vision_through_virtual_reality_headsets_identifying_360-degree_videos_from_head_movements.pdf": {
@@ -2125,6 +2252,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/predart towards automatic oracle prediction of object placements in augmented reality testing.pdf": {
@@ -2141,6 +2269,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-11-23T10:09:05"
   },
   "vr/principled and automated approach for investigating ar_vr attacks.pdf": {
@@ -2157,6 +2286,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/sok_come_together_unifying_security,information_theory,_and_cognition_for_a_mixed_reality_deception_attack_ontology_analysis_framework.pdf": {
@@ -2173,6 +2303,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/special robot vision algorithm test platform in virtual reality environment.pdf": {
@@ -2190,6 +2321,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/that_doesnt_go_there_attacks_on_shared_state_in_multi-user_augmented_reality_applications.pdf": {
@@ -2206,6 +2338,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/towards automatic oracle prediction for ar testing_assessing virtual object placement quality under real-world scenes.pdf": {
@@ -2222,6 +2355,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-11-23T10:09:05"
   },
   "vr/ubiquitous_virtual_humans_a_multi-platform_framework_for_embodied_ai_agents_in_xr.pdf": {
@@ -2239,6 +2373,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/uist24_augmented_object_intelligence_with_xr-objects.pdf": {
@@ -2255,6 +2390,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/utilizing generative ai for vr exploration testing_a case study.pdf": {
@@ -2272,6 +2408,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-11-23T10:09:05"
   },
   "vr/vrtestsniffer_test smell detector for virtual.pdf": {
@@ -2289,6 +2426,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-11-23T10:09:05"
   },
   "vr/when_the_user_is_inside_the_user_interface_anempirical_study_of_ui_security_properties_in_augmented_reality.pdf": {
@@ -2306,6 +2444,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/xrcare_issta25_extended_reality_cybersickness_assessment_via_user_review_analysis.pdf": {
@@ -2322,6 +2461,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/_virtual reality (vr) automated testing in the wild a case study on unity-based vr applications.pdf": {
@@ -2338,6 +2478,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-11-23T10:09:06"
   },
   "vr/_vrtest an extensible framework for automatic testing.pdf": {
@@ -2354,6 +2495,7 @@
     "read": true,
     "bib": "",
     "notes": "short paper",
+    "speed_read": null,
     "added_at": "2025-11-23T10:09:06"
   },
   "survey/arxiv25_aligning cyber space with physical world a comprehensive survey on embodied ai.pdf": {
@@ -2371,6 +2513,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "vr/erebus_sec23_access_control_for_augmented_reality_systems.pdf": {
@@ -2387,6 +2530,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "rl/ase22_effectively generating vulnerable transaction sequences in smart contracts with reinforcement learning-guided fuzzing.pdf": {
@@ -2403,6 +2547,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-28T13:11:47"
   },
   "best paper/issta24_asfuzzer_differential_testing_of_assemblers_with_error-driven_grammar_inference.pdf": {
@@ -2419,6 +2564,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-01-01T16:51:22"
   },
   "best paper/issta25_assessing_scene_generation_techniques_for_testing_colregs-compliance_of_autonomous_surface_vehicles.pdf": {
@@ -2436,6 +2582,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-01-04T20:41:47"
   },
   "best paper/icse25_a_test_oracle_for_reinforcement_learning_software_based_on_lyapunov_stability_control_theory.pdf": {
@@ -2453,6 +2600,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-01-01T16:55:31"
   },
   "best paper/icse25_tumbling_down_the_rabbit_hole_how_do_assisting_exploration_strategies_facilitate_grey-box_fuzzing.pdf": {
@@ -2469,6 +2617,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-01-01T17:06:24"
   },
   "best paper/issta25_llm4szz_enhancing_szz_algorithm_with_context-enhanced_assessment_on_large_language_models.pdf": {
@@ -2486,6 +2635,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-01-01T17:09:25"
   },
   "game/fse25_enhancing_game_ai_behaviors_with_large_language_models_and_agentic_ai .pdf": {
@@ -2503,6 +2653,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "embodied ai/arxiv12_goal-driven_robotic_pushing_using_tactile_and_proprioceptive_feedback.pdf": {
@@ -2519,6 +2670,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-01-04T13:26:07"
   },
   "embodied ai/12_mujoco_a_physics_engine_for_model-based_control.pdf": {
@@ -2535,6 +2687,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-01-23T21:01:06"
   },
   "rl/arxiv23_guiding_pretraining_in_reinforcement_learning_with_large_language_models.pdf": {
@@ -2552,6 +2705,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-02-12T14:45:36"
   },
   "llm/arxiv23_agentcoder_multi-agent_code_generation_with_effective_testing_and_self-optimisation.pdf": {
@@ -2568,6 +2722,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-03T13:11:46"
   },
   "survey/tosem23_a_survey_of_learning-based_automated_program_repair.pdf": {
@@ -2585,6 +2740,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-01T21:12:15"
   },
   "llm/arxiv26_generated_reality_human-centric_world_simulation_using_interactive_video_generation_with_hand_and_camera_control.pdf": {
@@ -2602,6 +2758,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-02T13:07:57"
   },
   "llm/ase25_llm-powered_multi-agent_collaboration_for_intelligent_industrial_on-call_automation.pdf": {
@@ -2618,6 +2775,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-03T19:34:43"
   },
   "llm/ase25_a_cognitive_observability_framework_for_the_reasoning_of_llm-powered_agents.pdf": {
@@ -2634,6 +2792,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-03T19:38:18"
   },
   "llm/ase25_an_llm-based_multi-agent_framework_for_agile_effort_estimation.pdf": {
@@ -2650,6 +2809,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-03T19:38:36"
   },
   "llm/uist23_generative_agents_interactive_simulacra_of_human_behavior.pdf": {
@@ -2666,6 +2826,7 @@
     "read": true,
     "bib": "",
     "notes": "    1. 可以使用流式对话存储记忆；\n    2. 通过观察自己 and 其他Agent的对话、行为以及世界状态改变写入记忆；\n    3. 记忆通过相关性、遗忘程度、重要性打分检索；\n    4. 通过记忆打分进行定时反思，反思结果重新写回记忆实现记忆的树套树；\n    5. 长任务规划通过先生成粗计划再进行细分的方式，并考虑计划的打乱问题；",
+    "speed_read": null,
     "added_at": "2026-03-03T19:46:44"
   },
   "llm/chi24comp_prompt-gaming_a_pilot_study_on_llm-evaluating_agent_in_a_meaningful_energy_game.pdf": {
@@ -2683,6 +2844,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-03T21:01:31"
   },
   "llm/chi24comp_text2ac_a_framework_for_game-ready_2d_agent_character(ac)_.pdf": {
@@ -2700,6 +2862,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-03T23:41:21"
   },
   "llm/siggraph25_pitar_an_llm-powered_agent_towards_intelligent_and_accurate.pdf": {
@@ -2716,6 +2879,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-03T23:49:19"
   },
   "llm/iclr24_smartplay_a_benchmark_for_llms_as_intelligent_agents.pdf": {
@@ -2733,6 +2897,7 @@
     "read": true,
     "bib": "",
     "notes": "设计了包含6个游戏和统一Openai AI Gym动作和环境接口的benchmark用来评估不同LLM在游戏Agent上的表现。",
+    "speed_read": null,
     "added_at": "2026-03-05T21:02:40"
   },
   "llm/nips24_omnijarvis_unified_vision-language-action_tokenization_enables_open-world_instruction_following_agents.pdf": {
@@ -2751,6 +2916,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-03T23:55:32"
   },
   "embodied ai/arxiv26_scenesmith_agentic_generation_of_simulation-ready_indoor_scenes.pdf": {
@@ -2766,9 +2932,10 @@
     ],
     "pdf": "papers/Embodied%20AI/arXiv26_SceneSmith_Agentic_Generation_of_Simulation-Ready_Indoor_Scenes.pdf",
     "pdf_local": "papers/Embodied%20AI/arXiv26_SceneSmith_Agentic_Generation_of_Simulation-Ready_Indoor_Scenes.pdf",
-    "read": false,
+    "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-09T17:40:57"
   },
   "embodied ai/arxiv25_embodiedbench_comprehensivebenchmarking_multi-modal_large_language_models_for_vision-driven_embodied_agents.pdf": {
@@ -2786,6 +2953,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-07T00:28:13"
   },
   "llm/arxiv24_deepseek-v2_a_strong,_economical,_and_efficient_mixture-of-experts_language_model.pdf": {
@@ -2802,6 +2970,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-05T13:55:14"
   },
   "embodied ai/iclr24_lota-bench _benchmarking_language-oriented_task_planners_for_embodied_agents.pdf": {
@@ -2819,6 +2988,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-06T20:16:35"
   },
   "embodied ai/nips22_vlmbench_a_compositional_benchmark_for_vision-and-language_manipulation.pdf": {
@@ -2836,6 +3006,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-06T23:02:41"
   },
   "llm/acl24_dataflow-guided_retrieval_augmentation_for_repository-level_code_completion.pdf": {
@@ -2852,6 +3023,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-07T17:53:19"
   },
   "llm/acl24_dragin_dynamic_retrieval_augmented_generation_based_on_the_information_needs_of_large_language_models.pdf": {
@@ -2868,6 +3040,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-07T17:50:05"
   },
   "llm/iclr24_self-rag_learning_to_retrieve,_generate,_and_critique_through_self-reflection.pdf": {
@@ -2884,6 +3057,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-07T17:48:17"
   },
   "llm/nip24_g-retriever_retrieval-augmented_generation_for_textual_graph_understanding_and_question_answering.pdf": {
@@ -2900,6 +3074,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-07T17:51:03"
   },
   "llm/nips20_retrieval-augmented_generation_for_knowledge-intensive_nlp_tasks.pdf": {
@@ -2916,6 +3091,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-07T17:46:44"
   },
   "embodied ai/iclr26_artvip_articulated_digital_assets_of visual_realism,_modular_interaction,_and physical_fidelity_for_robot_learnin.pdf": {
@@ -2932,6 +3108,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-09T17:27:07"
   },
   "vr/chi25_dreamcrafter_immersive_editing_of_3d_radiance_fields_through_flexible,_generative_inputs_and_outputs.pdf": {
@@ -2948,6 +3125,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-10T15:19:21"
   },
   "embodied ai/nips25_simworld_an_open-ended_simulator_for_agents_in_physical_and_social_worlds.pdf": {
@@ -2965,6 +3143,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-22T22:15:46"
   },
   "embodied ai/nips25_embodied_agent_interface_benchmarking_llms_for_embodied_decision_making.pdf": {
@@ -2982,6 +3161,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-22T22:19:08"
   },
   "embodied ai/nips22_procthor_large-scale_embodied_ai_using_procedural_generation.pdf": {
@@ -2999,6 +3179,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-22T22:21:26"
   },
   "embodied ai/nips23_describe_explain_plan_and_select_interactive_planning_with_large_language_models_enables_open-world_multi-task_agents.pdf": {
@@ -3016,6 +3197,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-22T22:25:07"
   },
   "embodied ai/nips25_embodied_web_agents_bridging_physical-digital_realms_for_integrated_agent_intelligence.pdf": {
@@ -3033,6 +3215,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-22T22:26:19"
   },
   "embodied ai/cvpr21_manipulathor_a_framework_for_visual_object_manipulation.pdf": {
@@ -3049,6 +3232,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-22T22:48:39"
   },
   "embodied ai/arxiv25_agentsafe_benchmarking_the_safety_of_embodied_agents_on_hazardous_instructions.pdf": {
@@ -3066,6 +3250,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-03-22T22:57:26"
   },
   "llm/ase24_graphcoder_enhancing_repository-level_code_completion_via_code_context_graph-based_retrieval_and_language_model.pdf": {
@@ -3082,6 +3267,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-04-18T18:07:25"
   },
   "__books/leedl_tutorial_v.1.2.4.pdf": {
@@ -3098,6 +3284,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-04-19T13:53:10"
   },
   "embodied ai/fse22_robofuzz_fuzzing_robotic_systems_over_robot_operating_system_(ros)_for_finding_correctness_bugs.pdf": {
@@ -3115,6 +3302,7 @@
     "read": true,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-04-23T15:33:48"
   },
   "embodied ai/ase23_phyfu_fuzzing_modern_physics_simulation_engines.pdf": {
@@ -3132,6 +3320,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-04-23T15:35:38"
   },
   "vr/ase23_vrguide efficient testing of virtual reality scenes via dynamic cut coverage.pdf": {
@@ -3148,6 +3337,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-11-23T10:09:05"
   },
   "vr/icse21_how developers optimize virtual reality applications a study of optimization commits in open source unity projects.pdf": {
@@ -3164,6 +3354,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-11-23T10:09:06"
   },
   "embodied ai/sec19_rvfuzzer_finding_input_validation_bugs_in_robotic_vehicles_through_control-guided_testing.pdf": {
@@ -3181,6 +3372,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-04-26T13:51:28"
   },
   "embodied ai/ndss21_pgfuzz_policy-guided_fuzzing_for_robotic_vehicles.pdf": {
@@ -3198,6 +3390,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2026-04-26T14:35:13"
   },
   "survey/a survey onthe design of virtual reality interaction interfaces.pdf": {
@@ -3215,6 +3408,7 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": null,
     "added_at": "2025-12-17T17:00:43"
   },
   "embodied ai/cvpr24_holodeck_language_guided_generation_of_3d_embodied_ai_environments.pdf": {
@@ -3232,6 +3426,85 @@
     "read": false,
     "bib": "",
     "notes": "",
+    "speed_read": {
+      "status": "success",
+      "generated_at": "2026-05-05T18:24:15",
+      "updated_at": "2026-05-05T18:24:44",
+      "model": "gpt-4o",
+      "api_base_url": "https://api.vectorengine.cn/v1/chat/completions",
+      "request_mode": "multimodal",
+      "page_count": 21,
+      "candidate_pages": [
+        {
+          "page": 1,
+          "reason": "分析/消融页",
+          "image_path": ".speedread_cache/3591da18306bf6e0/page_001.jpg"
+        },
+        {
+          "page": 2,
+          "reason": "方法总览图",
+          "image_path": ".speedread_cache/3591da18306bf6e0/page_002.jpg"
+        },
+        {
+          "page": 3,
+          "reason": "核心方法页",
+          "image_path": ".speedread_cache/3591da18306bf6e0/page_003.jpg"
+        },
+        {
+          "page": 6,
+          "reason": "实验结果页",
+          "image_path": ".speedread_cache/3591da18306bf6e0/page_006.jpg"
+        }
+      ],
+      "content": {
+        "one_sentence": "HOLODECK系统通过语言模型生成多样化、定制化的3D环境，并在Embodied AI任务中表现出色。",
+        "quick_takeaways": [
+          "HOLODECK利用GPT-4生成空间约束并优化布局，确保场景物理合理性。",
+          "实验表明HOLODECK在资产选择、布局一致性和整体偏好上优于现有基线方法PROC-THOR。"
+        ],
+        "problem_and_motivation": "现有3D环境生成方法依赖人工设计或硬编码规则，限制了场景的多样性和交互性，难以满足Embodied AI的需求。HOLODECK旨在通过语言模型自动生成高质量的3D场景，解决这些问题。",
+        "method_overview": "HOLODECK通过模块化设计生成3D环境，包括地板与墙壁模块、门窗模块、对象选择模块和基于约束的布局设计模块。",
+        "method_steps": [
+          "用户输入文本描述场景需求。",
+          "语言模型生成空间约束和对象选择建议。",
+          "模块化系统分别设计地板、墙壁、门窗，并选择合适的3D对象。",
+          "利用优化算法确保对象布局符合空间约束，生成最终场景。"
+        ],
+        "core_figures": [
+          {
+            "page": 3,
+            "title": "HOLODECK方法模块图",
+            "what_to_look": "关注地板与墙壁模块、门窗模块、对象选择模块和布局设计模块的交互流程。",
+            "what_it_proves": "展示了HOLODECK如何通过模块化设计生成物理合理且语义一致的3D场景。",
+            "why_important": "该图清晰地说明了系统的工作流程，有助于理解HOLODECK的核心技术。",
+            "image_path": ".speedread_cache/3591da18306bf6e0/page_003.jpg",
+            "reason": "核心方法页"
+          },
+          {
+            "page": 6,
+            "title": "人类评价与CLIP分数比较",
+            "what_to_look": "查看饼图中资产选择、布局一致性和整体偏好的用户偏好比例，以及柱状图中的CLIP分数。",
+            "what_it_proves": "证明了HOLODECK在生成高质量场景方面优于PROC-THOR，并接近人类设计的场景。",
+            "why_important": "实验结果直接支持了HOLODECK的有效性和实用性。",
+            "image_path": ".speedread_cache/3591da18306bf6e0/page_006.jpg",
+            "reason": "实验结果页"
+          }
+        ],
+        "experiment_read": "实验包括680名参与者的用户研究，比较了HOLODECK与PROC-THOR在资产选择、布局一致性和整体偏好上的表现。结果显示，HOLODECK在所有指标上均显著优于PROC-THOR。此外，CLIP分数验证了HOLODECK生成场景的视觉一致性。",
+        "contributions": [
+          "提出了一种语言驱动的3D环境生成系统，支持多样化、定制化的场景创建。",
+          "验证了HOLODECK在Embodied AI任务中帮助代理适应新场景的能力。"
+        ],
+        "limitations": [
+          "目前仅支持室内场景，尚未扩展到室外或更复杂的环境。",
+          "需要进一步优化3D资产库以支持更广泛的应用场景。"
+        ],
+        "deep_read_suggestions": [
+          "建议精读第3页的核心方法部分，深入理解HOLODECK的模块化设计及其工作流程。",
+          "建议精读第6页的实验结果部分，详细分析用户评价和CLIP分数对系统有效性的支持。"
+        ]
+      }
+    },
     "added_at": "2026-05-05T11:22:08"
   }
 }
