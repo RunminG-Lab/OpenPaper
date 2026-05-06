@@ -232,7 +232,7 @@ async function loadMetadata() {
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         return await resp.json();
     } catch (err) {
-        statusEl.textContent = '❌ 无法加载 metadata.json：' + err.message + '。请通过 waatchdog.py 启动本地服务后再访问。';
+        statusEl.textContent = '❌ 无法加载 metadata.json：' + err.message + '。请通过 backend/server.py 启动本地服务后再访问。';
         statusEl.style.color = '#dc2626';
         return null;
     }

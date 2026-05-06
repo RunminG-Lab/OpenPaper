@@ -1,27 +1,26 @@
-﻿<#
+<#
 .SYNOPSIS
     把 backend/server.py 注册为 Windows 任务计划，在当前用户登录时自动后台启动。
 
 .USAGE
-  右键以 PowerShell 运行，或在 PowerShell 中执行：
-    powershell -ExecutionPolicy Bypass -File .\scripts\install_autostart.ps1
-
-  卸载：
-    powershell -ExecutionPolicy Bypass -File .\scripts\uninstall_autostart.ps1
+  powershell -ExecutionPolicy Bypass -File .\scripts\install_autostart.ps1
 #>
 
 $ErrorActionPreference = 'Stop'
 
-$TaskName   = 'PaperWaatchdog'
+$TaskName = 'OpenPaperServer'
+$LegacyTaskName = 'PaperWaatchdog'
 $ScriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectDir = Split-Path $ScriptDir -Parent
-$VbsPath    = Join-Path $ScriptDir 'start_waatchdog.vbs'
+$VbsPath    = Join-Path $ScriptDir 'start_server.vbs'
 
+if (-not (Test-Path $VbsPath)) {
+    $VbsPath = Join-Path $ScriptDir 'start_waatchdog.vbs'
+}
 if (-not (Test-Path $VbsPath)) {
     throw "找不到启动器：$VbsPath"
 }
 
-# 检查 Python 是否可用：优先项目 .venv，其次 PATH 中的 python.exe
 $venvPython = Join-Path $ProjectDir '.venv\Scripts\python.exe'
 $python = Get-Command python.exe -ErrorAction SilentlyContinue
 if (-not (Test-Path $venvPython) -and -not $python) {
@@ -29,16 +28,9 @@ if (-not (Test-Path $venvPython) -and -not $python) {
     Write-Warning "请先创建虚拟环境，或确认 Python 已安装并加入 PATH。"
 }
 
-# 用 wscript.exe 静默执行 vbs
-$Action    = New-ScheduledTaskAction `
-    -Execute 'wscript.exe' `
-    -Argument "`"$VbsPath`""
-
-# 触发器：当前用户登录时
-$Trigger   = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
-
-# 设置：允许电池供电运行、不超时、失败自动重启
-$Settings  = New-ScheduledTaskSettingsSet `
+$Action = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "`"$VbsPath`""
+$Trigger = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
+$Settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries `
     -StartWhenAvailable `
@@ -46,13 +38,13 @@ $Settings  = New-ScheduledTaskSettingsSet `
     -RestartCount 3 `
     -RestartInterval (New-TimeSpan -Minutes 1)
 
-# 当前用户的完整账户名（COMPUTER\User 或 DOMAIN\User）
 $FullUser = "$env:USERDOMAIN\$env:USERNAME"
 
-# 如果已存在则先删除
-if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
-    Write-Host "已移除旧任务：$TaskName"
+foreach ($name in @($TaskName, $LegacyTaskName)) {
+    if (Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue) {
+        Unregister-ScheduledTask -TaskName $name -Confirm:$false
+        Write-Host "已移除旧任务：$name"
+    }
 }
 
 Register-ScheduledTask `
@@ -72,7 +64,6 @@ Write-Host "现在立即启动一次，方便你马上访问 http://127.0.0.1:80
 Start-ScheduledTask -TaskName $TaskName
 Start-Sleep -Seconds 2
 
-# 简单检查是否在监听
 $listening = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
 if ($listening) {
     Write-Host "✅ 服务已监听 127.0.0.1:8000，浏览器打开 http://127.0.0.1:8000 即可。"

@@ -381,7 +381,7 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
                 <div style="margin-top:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                     <button type="button" id="ai-test">测试接口</button>
                     <button type="button" id="ai-reset">清空速读配置</button>
-                    <span class="settings-hint">需要通过 waatchdog.py 启动本地服务。选择推荐模型后自动填入模型名。</span>
+                    <span class="settings-hint">需要通过 backend/server.py 启动本地服务。选择推荐模型后自动填入模型名。</span>
                 </div>
             </div>
             <div class="modal-tab-pane" data-pane="logs">
@@ -1298,7 +1298,7 @@ async function generateSpeedRead(key, { force = false, openAfterSuccess = true }
         return;
     }
     if (!backendAvailable) {
-        showStatus('速读生成依赖 waatchdog.py 本地服务；请先启动本地服务后刷新页面。', true);
+        showStatus('速读生成依赖 backend/server.py 本地服务；请先启动本地服务后刷新页面。', true);
         return;
     }
     const apiConfig = getSpeedReadConfigForRequest();
@@ -1489,9 +1489,9 @@ async function openContainingFolder(encodedUri) {
                 showStatus('已在资源管理器中打开：' + (data.path || path), false);
                 return;
             }
-            showStatus('打开失败：' + (data.error || ('HTTP ' + resp.status)) + '（请确认是通过 waatchdog.py 启动的本地服务）', true);
+            showStatus('打开失败：' + (data.error || ('HTTP ' + resp.status)) + '（请确认是通过 backend/server.py 启动的本地服务）', true);
         } catch (apiErr) {
-            showStatus('无法连接本地服务（请通过 waatchdog.py 启动）：' + apiErr.message, true);
+            showStatus('无法连接本地服务（请通过 backend/server.py 启动）：' + apiErr.message, true);
         }
 
         if (navigator.clipboard?.writeText) {
@@ -2068,7 +2068,7 @@ function initSettingsModal() {
 
     aiTestBtn.addEventListener('click', async () => {
         if (!backendAvailable) {
-            showStatus('接口测试依赖 waatchdog.py 本地服务；请先启动本地服务后刷新页面。', true);
+            showStatus('接口测试依赖 backend/server.py 本地服务；请先启动本地服务后刷新页面。', true);
             return;
         }
         const apiConfig = getSpeedReadConfigForRequest();
@@ -2282,7 +2282,7 @@ async function handleDeletePaper(fileKey) {
         // 清掉无效的标签筛选 + 重新加载数据
         await reloadAfterRecycleAction();
     } catch (err) {
-        showStatus('删除失败（请确认 waatchdog.py 在运行）：' + err.message, true);
+        showStatus('删除失败（请确认 backend/server.py 在运行）：' + err.message, true);
     }
 }
 

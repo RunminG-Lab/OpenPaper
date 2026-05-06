@@ -1,5 +1,5 @@
 # papers directory - local only (except demo)
-papers/
+papers/**
 !papers/demo/
 !papers/demo/**
 

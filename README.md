@@ -71,7 +71,7 @@ papers/
 ### 第四步：启动服务
 
 ```bash
-python waatchdog.py
+python backend/server.py
 ```
 
 服务启动后会自动构建 `index.html`，并在后台监控 `papers/` 目录的变化。
@@ -163,24 +163,23 @@ powershell -ExecutionPolicy Bypass -File .\scripts\uninstall_autostart.ps1
 
 ```
 OpenPaper/
-├── backend/
-│   ├── server.py  # Original waatchdog.py
-│   ├── build.py
-│   └── metadata.json
-├── frontend/
-│   ├── index.html
-│   ├── template.html
-│   └── stats.html
-├── utils/
-│   └── fix_metadata.py
-├── papers/
-│   ├── demo/
-│   └── ...
-├── scripts/
-│   ├── install_autostart.ps1
-│   ├── start_server.vbs  # Updated script
-│   └── uninstall_autostart.ps1
-└── .gitignore
+|-- backend/
+|   |-- server.py  # main service entry
+|-- build.py
+|-- metadata.json
+|-- frontend/
+|   |-- index.html
+|   |-- template.html
+|   `-- stats.html
+|-- scripts/
+|   |-- fix_metadata.py
+|   |-- install_autostart.ps1
+|   |-- start_server.vbs
+|   `-- uninstall_autostart.ps1
+|-- papers/
+|   |-- demo/
+|   `-- ...
+`-- .gitignore
 ```
 
 ---
@@ -188,8 +187,7 @@ OpenPaper/
 ## 🛠️ 常见问题
 
 **Q：放入 PDF 后页面没有更新？**  
-A：确认 `waatchdog.py` 正在运行，手动刷新浏览器（F5）。如果还没有，检查 `waatchdog.log` 查看构建日志。
-
+A: Confirm `backend/server.py` is running, refresh the browser (F5), then check `waatchdog.log` if needed.
 **Q：会议/年份识别不对怎么办？**  
 A：点击论文卡片右上角的编辑按钮，手动修改会议、年份、标题等字段，修改后自动保存到 `metadata.json`。
 

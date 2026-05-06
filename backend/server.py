@@ -16,21 +16,21 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-# 确保 WORKSPACE_ROOT 始终指向仓库根目录（即 backend/ 的上一级）
-# 如果脚本在 backend/ 目录下，dirname(__file__) 是 backend，再上一级才是仓库根目录
+# Keep WORKSPACE_ROOT pinned to the repository root.
+# When this file lives under backend/, one extra dirname() is required.
 _script_dir = os.path.dirname(os.path.abspath(__file__))
 if os.path.basename(_script_dir) == "backend":
     WORKSPACE_ROOT = os.path.dirname(_script_dir)
 else:
     WORKSPACE_ROOT = _script_dir
 
-# 监控目录（相对于工作区根目录）
+# Paths resolved from the workspace root.
 PDF_DIR = os.path.join(WORKSPACE_ROOT, "papers")
 BUILD_SCRIPT = os.path.join(WORKSPACE_ROOT, "build.py")
 METADATA_FILE = os.path.join(WORKSPACE_ROOT, "metadata.json")
 METADATA_DEMO_FILE = os.path.join(WORKSPACE_ROOT, "metadata.demo.json")
 
-# 首次运行：若 metadata.json 不存在，从 metadata.demo.json 复制初始化
+# Bootstrap metadata.json from the tracked demo file on first run.
 if not os.path.exists(METADATA_FILE) and os.path.exists(METADATA_DEMO_FILE):
     shutil.copy2(METADATA_DEMO_FILE, METADATA_FILE)
 
@@ -44,14 +44,25 @@ SPEEDREAD_IMAGE_WIDTH = 1400
 SPEEDREAD_MAX_SOURCE_CHARS = 24000
 
 
+def _configure_stdio() -> None:
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if not stream:
+            continue
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
 def _log(msg: str) -> None:
-    """统一日志输出：前缀时间戳，简洁风格。"""
+    """Write a timestamped log line."""
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] {msg}", flush=True)
 
 
 def _bring_explorer_to_front(target_path: str) -> None:
-    """在 Windows 上尝试把刚刚打开的资源管理器窗口置顶。"""
+    """Best-effort attempt to focus the Explorer window for target_path."""
     if not sys.platform.startswith("win"):
         return
     try:
@@ -91,7 +102,7 @@ def _bring_explorer_to_front(target_path: str) -> None:
             return False
         return True
 
-    # 给 explorer 一点时间真正打开窗口
+    # Give Explorer a brief moment to create the target window.
     for _ in range(20):
         time.sleep(0.1)
         found.clear()
@@ -108,7 +119,7 @@ def _bring_explorer_to_front(target_path: str) -> None:
 
 
 class PaperRequestHandler(SimpleHTTPRequestHandler):
-    """在静态文件服务基础上，增加 /api/open-folder 接口用于调用资源管理器。"""
+    """Static file handler with extra local management APIs."""
 
     def _send_json(self, status, payload):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -174,9 +185,9 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             return
         self._send_json(404, {"ok": False, "error": "未知接口"})
 
-    # ------- 回收站相关 -------
+    # ------- recycle bin -------
     def _safe_rel(self, rel: str):
-        """把传入的相对路径规范化，并确保在工作区内。"""
+        """Normalize a relative path and keep it inside the workspace."""
         rel = (rel or "").replace("\\", "/").lstrip("/")
         if not rel:
             return None
@@ -199,7 +210,7 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(400, {"ok": False, "error": "缺少 file_key"})
             return
 
-        # 读 metadata.json 找到原始 entry（保留大小写的 pdf_local）
+        # Resolve the original entry from metadata.json.
         meta_abs = os.path.join(WORKSPACE_ROOT, METADATA_FILE)
         try:
             with open(meta_abs, "r", encoding="utf-8") as f:
@@ -213,7 +224,7 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(404, {"ok": False, "error": f"metadata 中找不到 {file_key}"})
             return
 
-        # 还原真实磁盘相对路径（pdf_local 是 URL-encoded）
+        # Recover the real relative disk path from the encoded pdf path.
         pdf_local = entry.get("pdf_local") or entry.get("pdf") or ""
         rel_disk = unquote(pdf_local)  # e.g. "papers/Embodied AI/foo.pdf"
         abs_pdf = self._safe_rel(rel_disk)
@@ -221,7 +232,7 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(404, {"ok": False, "error": f"文件不存在: {rel_disk}"})
             return
 
-        # 移动到 .recycle_bin/<id>/
+        # Move the file into .recycle_bin/<id>/.
         recycle_root = os.path.join(WORKSPACE_ROOT, RECYCLE_DIR)
         os.makedirs(recycle_root, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -250,9 +261,9 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             with open(os.path.join(item_dir, "info.json"), "w", encoding="utf-8") as f:
                 json.dump(info, f, ensure_ascii=False, indent=2)
         except Exception as exc:
-            _log(f"⚠️ 写入回收站 info.json 失败: {exc}")
+            _log(f"写入回收站 info.json 失败: {exc}")
 
-        _log(f"🗑️ 删除到回收站: {rel_disk} → {RECYCLE_DIR}/{rid}/")
+        _log(f"已移入回收站: {rel_disk} -> {RECYCLE_DIR}/{rid}/")
         self._send_json(200, {"ok": True, "id": rid, "title": info["title"]})
 
     def handle_recycle_list(self):
@@ -315,7 +326,7 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(409, {"ok": False, "error": "目标位置已存在同名文件"})
             return
 
-        # 找到回收站里的 PDF（除 info.json 外的第一个 .pdf）
+        # Find the first PDF inside the recycle item directory.
         src_pdf = None
         for name in os.listdir(item_dir):
             if name.lower().endswith(".pdf"):
@@ -332,13 +343,13 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(500, {"ok": False, "error": f"恢复文件失败: {exc}"})
             return
 
-        # 同步运行 build.py 让 metadata 立即包含新文件
+        # Rebuild immediately so metadata includes the restored file.
         try:
             subprocess.run([sys.executable, BUILD_SCRIPT], check=False, cwd=WORKSPACE_ROOT)
         except Exception as exc:
-            _log(f"⚠️ 恢复后 build 失败: {exc}")
+            _log(f"恢复后执行 build 失败: {exc}")
 
-        # 把保存的 metadata 合并回去（保留笔记/已读/标签等）
+        # Merge saved metadata back in so notes/read/tags survive restore.
         saved_meta = info.get("metadata") or {}
         file_key = info.get("file_key") or saved_meta.get("file_key")
         if file_key and saved_meta:
@@ -346,25 +357,25 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             try:
                 with open(meta_abs, "r", encoding="utf-8") as f:
                     meta = json.load(f)
-                # 用保存版本覆盖（pdf 路径可能小写化，沿用 build 生成的更安全）
+                # Restore user fields, but keep build-generated path fields.
                 current = meta.get(file_key) or {}
                 merged = {**current, **saved_meta}
-                # pdf 路径以 build 生成的为准（避免大小写漂移）
+                # Trust build output for path casing and encoding.
                 if current.get("pdf"): merged["pdf"] = current["pdf"]
                 if current.get("pdf_local"): merged["pdf_local"] = current["pdf_local"]
                 meta[file_key] = merged
                 with open(meta_abs, "w", encoding="utf-8") as f:
                     json.dump(meta, f, ensure_ascii=False, indent=2)
             except Exception as exc:
-                _log(f"⚠️ 合并恢复 metadata 失败: {exc}")
+                _log(f"合并恢复 metadata 失败: {exc}")
 
-        # 清理回收站项目目录
+        # Remove the recycle item directory after restore.
         try:
             shutil.rmtree(item_dir)
         except Exception as exc:
-            _log(f"⚠️ 清理回收站目录失败: {exc}")
+            _log(f"清理回收站目录失败: {exc}")
 
-        _log(f"♻️ 恢复: {rel_disk}")
+        _log(f"已恢复: {rel_disk}")
         self._send_json(200, {"ok": True, "file_key": file_key})
 
     def handle_recycle_purge(self, payload):
@@ -378,7 +389,7 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
         except Exception as exc:
             self._send_json(500, {"ok": False, "error": f"删除失败: {exc}"})
             return
-        _log(f"🔥 永久删除回收站项: {rid}")
+        _log(f"已永久删除回收站项目: {rid}")
         self._send_json(200, {"ok": True})
 
     def handle_recycle_purge_all(self):
@@ -392,11 +403,11 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
                         shutil.rmtree(d)
                         count += 1
                     except Exception as exc:
-                        _log(f"⚠️ 清空回收站失败 {name}: {exc}")
-        _log(f"🔥 清空回收站，共 {count} 项")
+                        _log(f"清空回收站失败 {name}: {exc}")
+        _log(f"已清空回收站，共 {count} 项")
         self._send_json(200, {"ok": True, "count": count})
 
-    # ------- metadata 即时保存 -------
+    # ------- metadata persistence -------
     def _atomic_write_metadata(self, data):
         meta_abs = os.path.join(WORKSPACE_ROOT, METADATA_FILE)
         tmp_abs = meta_abs + ".tmp"
@@ -412,7 +423,7 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
         try:
             self._atomic_write_metadata(data)
         except Exception as exc:
-            _log(f"⚠️ 保存 metadata 失败: {exc}")
+            _log(f"保存 metadata 失败: {exc}")
             self._send_json(500, {"ok": False, "error": f"写入失败: {exc}"})
             return
         self._send_json(200, {"ok": True, "count": len(data)})
@@ -436,12 +447,12 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             meta[file_key] = merged
             self._atomic_write_metadata(meta)
         except Exception as exc:
-            _log(f"⚠️ update-paper 失败: {exc}")
+            _log(f"update-paper 失败: {exc}")
             self._send_json(500, {"ok": False, "error": f"更新失败: {exc}"})
             return
         self._send_json(200, {"ok": True, "file_key": file_key})
 
-    # ------- 论文速读 -------
+    # ------- paper speed-read -------
     def _load_metadata_dict(self):
         meta_abs = os.path.join(WORKSPACE_ROOT, METADATA_FILE)
         if not os.path.exists(meta_abs):
@@ -545,7 +556,7 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             ("方法总览图", ["figure", "fig.", "fig ", "framework", "pipeline", "architecture", "overview", "method"]),
             ("核心方法页", ["method", "approach", "module", "algorithm", "framework", "pipeline"]),
             ("实验结果页", ["table", "result", "results", "experiment", "evaluation", "benchmark", "comparison"]),
-            ("分析/消融页", ["ablation", "analysis", "case study", "limitation", "discussion"]),
+            ("分析或消融页", ["ablation", "analysis", "case study", "limitation", "discussion"]),
         ]
         page_payloads = []
         for idx in range(page_count):
@@ -605,7 +616,7 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
                 text = page_texts[page_no - 1] if page_no - 1 < len(page_texts) else ""
                 picked.append({
                     "page": page_no,
-                    "reason": "默认页",
+                    "reason": "默认候选页",
                     "excerpt": self._clean_page_text(text, 900),
                 })
 
@@ -803,9 +814,9 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
                 figures.append({
                     "page": asset.get("page"),
                     "title": asset.get("reason") or "关键页面",
-                    "what_to_look": "优先看该页的主图、表格标题与图注，再回到正文对应段落交叉验证。",
-                    "what_it_proves": "自动生成未给出更细图表结论时，请以图注和正文原文为准。",
-                    "why_important": "该页在自动筛选时被认为最接近方法或实验核心。",
+                    "what_to_look": "优先查看主图、表格标题和图注，再回到正文对应段落交叉验证。",
+                    "what_it_proves": "如果自动输出缺少更细的证据，请以图注和正文原文为准。",
+                    "why_important": "该页在自动筛选中最接近方法或实验的核心证据。",
                     "image_path": asset.get("image_path", ""),
                     "reason": asset.get("reason", ""),
                 })
@@ -844,37 +855,37 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             "写作要求：\n"
             "1. 全部使用中文，信息密度高，但要可读。\n"
             "2. 只依据提供的论文文本片段与候选页图像，不得补充外部知识。\n"
-            "3. 若论文没有明确说明某点，必须明确写“论文中未明确说明”。\n"
+            "3. 如果论文没有明确说明某点，必须写“论文中未明确说明”。\n"
             "4. 不要夸奖论文，不要写营销式语言，不要把摘要直译成中文。\n"
-            "5. 重点讲清：研究问题、动机、方法怎么工作、实验结果说明了什么。\n"
-            "6. 图表解读部分要告诉读者该看哪一页、看什么、它支持了作者什么论点。\n"
+            "5. 重点讲清研究问题、动机、方法如何工作、实验结果说明了什么。\n"
+            "6. 图表解读要说明该看哪一页、看什么、它支撑了作者什么论点。\n"
             "7. 仅输出一个合法 JSON 对象，不要输出 Markdown 代码块。\n\n"
             "JSON schema:\n"
             "{\n"
             "  \"one_sentence\": \"一句话总结\",\n"
-            "  \"quick_takeaways\": [\"省流点1\", \"省流点2\"],\n"
+            "  \"quick_takeaways\": [\"省流点\", \"省流点\"],\n"
             "  \"problem_and_motivation\": \"问题与动机\",\n"
             "  \"method_overview\": \"方法速读\",\n"
-            "  \"method_steps\": [\"步骤1\", \"步骤2\"],\n"
+            "  \"method_steps\": [\"步骤 1\", \"步骤 2\"],\n"
             "  \"core_figures\": [\n"
             "    {\n"
             "      \"page\": 3,\n"
             "      \"title\": \"图/表标题的中文概括\",\n"
             "      \"what_to_look\": \"读图时要先看什么\",\n"
-            "      \"what_it_proves\": \"它支持了什么结论\",\n"
+            "      \"what_it_proves\": \"它支撑了什么结论\",\n"
             "      \"why_important\": \"为什么这张图/表值得优先看\"\n"
             "    }\n"
             "  ],\n"
             "  \"experiment_read\": \"实验速读\",\n"
-            "  \"contributions\": [\"贡献1\", \"贡献2\"],\n"
-            "  \"limitations\": [\"局限1\", \"局限2\"],\n"
-            "  \"deep_read_suggestions\": [\"建议先精读哪一节/哪几页及原因\"]\n"
+            "  \"contributions\": [\"贡献 1\", \"贡献 2\"],\n"
+            "  \"limitations\": [\"局限 1\", \"局限 2\"],\n"
+            "  \"deep_read_suggestions\": [\"建议先精读哪一节、哪几页及原因\"]\n"
             "}\n\n"
             f"论文基础信息：\n标题：{paper_meta.get('title', '')}\n"
             f"作者：{paper_meta.get('authors', '')}\n"
             f"年份：{paper_meta.get('year', '')}\n"
             f"会议/期刊：{paper_meta.get('venue', '')}\n\n"
-            "候选关键页（如果你在 core_figures 中引用 page，必须从这些候选页里选）：\n"
+            "候选关键页（如果在 core_figures 中引用 page，必须从这些候选页里选择）：\n"
             + "\n".join(
                 f"- page {item.get('page')}: {item.get('reason')}\n  摘录: {self._clean_page_text(item.get('excerpt'), 500)}"
                 for item in candidate_pages
@@ -895,14 +906,14 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             has_image_inputs = True
             content_items.append({
                 "type": "text",
-                "text": f"候选页 page {item.get('page')}，自动标签：{item.get('reason')}。阅读重点：先结合这一页图表与前述文本片段做交叉解释。",
+                "text": f"候选页 page {item.get('page')}，自动标记：{item.get('reason')}。请结合该页图表与前述文本片段交叉解读。",
             })
             content_items.append({
                 "type": "image_url",
                 "image_url": {"url": data_url},
             })
 
-        # 绕过系统代理（Clash/v2ray 等本地代理会拦截 urllib 请求导致失败）
+        # Bypass system proxies to avoid local proxy tools interfering.
         _no_proxy_opener = request.build_opener(request.ProxyHandler({}))
 
         def send_chat_request(user_content, request_mode):
@@ -934,36 +945,36 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
                 method="POST",
             )
 
-            _log(f"⚡ 发起速读请求: 模型={model}, 模式={request_mode}, 端点={endpoint}, 超时={timeout_sec}秒")
+            _log(f"send speed-read request: model={model}, mode={request_mode}, endpoint={endpoint}, timeout={timeout_sec}s")
             try:
                 with _no_proxy_opener.open(req, timeout=timeout_sec) as resp:
                     body = resp.read().decode("utf-8", errors="replace")
-                    _log(f"⚡ 收到模型回复，长度={len(body)}")
+                    _log(f"收到模型回复，长度 {len(body)}")
             except error.HTTPError as exc:
                 detail = exc.read().decode("utf-8", errors="replace") if hasattr(exc, "read") else str(exc)
-                _log(f"❌ HTTP 错误 {exc.code}: {detail[:200]}")
+                _log(f"HTTP 错误 {exc.code}: {detail[:200]}")
                 raise RuntimeError(f"模型接口返回 HTTP {exc.code}: {self._clean_page_text(detail, 600)}")
             except error.URLError as exc:
-                _log(f"❌ 连接失败: {exc.reason}")
+                _log(f"连接失败: {exc.reason}")
                 raise RuntimeError(f"无法连接模型接口: {exc.reason}")
             except Exception as exc:
-                _log(f"❌ 请求异常: {exc}")
+                _log(f"请求异常: {exc}")
                 raise RuntimeError(f"请求模型接口异常: {exc}")
 
             try:
                 data = json.loads(body)
-                _log("⚡ JSON 解析成功")
+                _log("JSON 解析成功")
             except json.JSONDecodeError as exc:
-                _log(f"❌ JSON 解析失败: {exc}, 响应头={len(body)} 字符")
+                _log(f"JSON 解析失败: {exc}, 响应长度 {len(body)} 字符")
                 _log(f"   响应片段: {body[:500]}")
                 raise RuntimeError(f"模型接口返回了无效 JSON，可能是错误或网关问题。详情: {self._clean_page_text(str(exc), 300)}")
 
             content = self._extract_completion_text(data)
             if not content:
-                _log(f"❌ 无法从响应中提取文本。响应结构: {json.dumps(data, ensure_ascii=False)[:500]}")
-                raise RuntimeError("模型接口返回成功，但没有生成文本内容。可能原因：响应格式不兼容、被模型拒绝、或超过限制。")
+                _log(f"无法从响应中提取文本。响应结构: {json.dumps(data, ensure_ascii=False)[:500]}")
+                raise RuntimeError("模型接口返回成功，但没有生成文本内容")
 
-            _log(f"⚡ 提取生成文本: {len(content)} 字符")
+            _log(f"提取生成文本: {len(content)} 字符")
             return self._extract_json_block(content), request_mode
 
         def should_fallback_to_text_only(message):
@@ -992,7 +1003,7 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             except RuntimeError as exc:
                 if not should_fallback_to_text_only(str(exc)):
                     raise
-                _log("⚠️ 当前接口可能不支持图像输入或多模态消息，已自动降级为纯文本速读重试")
+                _log("当前接口可能不支持图像输入或多模态消息，已自动降级为纯文本速读重试")
 
         return send_chat_request(prompt, "text-only")
 
@@ -1056,7 +1067,7 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
                 try:
                     enriched["image_path"] = self._render_speedread_page_image(abs_pdf, file_key, int(item.get("page") or 0))
                 except Exception as img_exc:
-                    _log(f"⚠️ 速读渲染第 {item.get('page')} 页失败: {img_exc}")
+                    _log(f"速读渲染第 {item.get('page')} 页失败: {img_exc}")
                     enriched["image_path"] = ""
                 enriched_candidates.append(enriched)
 
@@ -1090,7 +1101,7 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             current["speed_read"] = success_state
             metadata[file_key] = current
             self._atomic_write_metadata(metadata)
-            _log(f"⚡ 速读生成完成: {file_key}")
+            _log(f"速读生成完成: {file_key}")
             self._send_json(200, {"ok": True, "speed_read": success_state})
         except Exception as exc:
             error_state = {
@@ -1107,8 +1118,8 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
                 metadata[file_key] = current
                 self._atomic_write_metadata(metadata)
             except Exception as write_exc:
-                _log(f"⚠️ 写入速读错误状态失败: {write_exc}")
-            _log(f"❌ 速读生成失败: {file_key} - {exc}")
+                _log(f"写入速读错误状态失败: {write_exc}")
+            _log(f"速读生成失败: {file_key} - {exc}")
             self._send_json(500, {"ok": False, "error": self._clean_page_text(str(exc), 600), "speed_read": error_state})
 
     def handle_test_speedread_config(self, payload):
@@ -1124,9 +1135,9 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             "venue": "Config Test",
         }
         test_grounding_text = (
-            "这是一段仅用于测试接口连通性和模型可用性的短文本。"
-            "请严格按要求输出 JSON，不需要引用外部知识。"
-            "论文提出了一个测试方法，并报告它在实验中有效。"
+            "This is a short connectivity test prompt for API and model availability. "
+            "Return valid JSON only, and do not use external knowledge. "
+            "Assume the paper proposes a method and reports effective experiment results."
         )
         try:
             parsed, request_mode = self._request_speedread_from_model(api_config, test_paper_meta, test_grounding_text, [])
@@ -1173,7 +1184,7 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(400, {"ok": False, "error": "缺少 path 参数"})
             return
 
-        # 防止路径穿越：必须落在工作区目录内
+        # Prevent path traversal outside the workspace.
         abs_path = os.path.abspath(os.path.join(WORKSPACE_ROOT, rel_path))
         try:
             common = os.path.commonpath([WORKSPACE_ROOT, abs_path])
@@ -1189,7 +1200,7 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
 
         try:
             if sys.platform.startswith("win"):
-                # 允许新进程把窗口提到前台（绕过 Windows 的前台锁机制）
+                # Let the new process request foreground window focus.
                 try:
                     import ctypes
                     ASFW_ANY = -1
@@ -1200,13 +1211,13 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
                 if os.path.isdir(abs_path):
                     os.startfile(abs_path)  # type: ignore[attr-defined]
                 else:
-                    # 打开文件所在文件夹并选中该文件
+                    # Open the parent folder and select the target file.
                     subprocess.Popen(
                         ["explorer", "/select,", abs_path],
                         close_fds=True,
                     )
 
-                # 二次保险：稍等片刻把目标窗口提前
+                # Second pass: bring the matching Explorer window forward.
                 threading.Thread(
                     target=_bring_explorer_to_front,
                     args=(abs_path,),
@@ -1223,11 +1234,11 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
 
         self._send_json(200, {"ok": True, "path": abs_path})
 
-    def log_message(self, format, *args):  # 安静模式
+    def log_message(self, format, *args):  # 静默模式
         return
 
 class PDFHandler(FileSystemEventHandler):
-    """监听 papers/ 下任意 PDF 的新增 / 修改 / 删除 / 移动，触发 build。"""
+    """Watch PDF changes under papers/ and debounce build.py runs."""
 
     DEBOUNCE_SECONDS = 1.0
 
@@ -1240,12 +1251,12 @@ class PDFHandler(FileSystemEventHandler):
         return bool(path) and path.lower().endswith(".pdf")
 
     def _schedule(self, reason: str, path: str):
-        # 仅打印相对路径，避免每行都过长
+        # Log relative paths only to keep lines readable.
         try:
             short = os.path.relpath(path, WORKSPACE_ROOT)
         except ValueError:
             short = path
-        _log(f"📄 PDF {reason}: {short}")
+        _log(f"PDF {reason}: {short}")
         with self._lock:
             if self._timer is not None:
                 self._timer.cancel()
@@ -1274,17 +1285,18 @@ class PDFHandler(FileSystemEventHandler):
             self._schedule("移动(旧位置)", event.src_path)
 
     def run_build(self):
-        _log("⚡ 执行 build.py")
+        _log("执行 build.py")
         try:
             subprocess.run([sys.executable, BUILD_SCRIPT], check=False)
         except Exception as exc:
-            _log(f"❌ build 失败: {exc}")
+            _log(f"build 失败: {exc}")
 
 if __name__ == "__main__":
-    # 确保工作目录始终是仓库根目录，这样 HTTP 服务器才能正确提供文件
+    _configure_stdio()
+    # Serve files from the repository root regardless of launch location.
     os.chdir(WORKSPACE_ROOT)
     
-    # 解析端口参数：python waatchdog.py [--port 8001]
+    # Parse an optional port override: python backend/server.py --port 8001
     port = HTTP_PORT
     argv = sys.argv[1:]
     for i, arg in enumerate(argv):
@@ -1292,33 +1304,35 @@ if __name__ == "__main__":
             try:
                 port = int(argv[i + 1])
             except ValueError:
-                print(f"⚠️ 无效端口: {argv[i + 1]}，使用默认 {HTTP_PORT}")
+                print(f"无效端口: {argv[i + 1]}，使用默认 {HTTP_PORT}")
                 port = HTTP_PORT
             break
 
-    # 启动自定义 HTTP 服务器（提供静态文件 + /api/open-folder 接口）
+    # Start the HTTP server for static files and local APIs.
     try:
         httpd = ThreadingHTTPServer(("127.0.0.1", port), PaperRequestHandler)
     except OSError as exc:
-        print(f"❌ 无法绑定 127.0.0.1:{port} —— {exc}")
+        print(f"无法绑定 127.0.0.1:{port}: {exc}")
         if getattr(exc, "winerror", None) == 10048 or "Address already in use" in str(exc):
-            print("   端口已被占用。常见原因：之前的 waatchdog.py 还在运行。")
-            print("   解决办法：")
-            print("     1) 关掉旧的 waatchdog 终端，或在 PowerShell 执行：")
+            print("   端口已被占用，可能是之前的 backend/server.py 仍在运行。")
+            print("   解决办法:")
+            print("     1) 关闭旧服务，或在 PowerShell 执行:")
             print(f"        Get-NetTCPConnection -LocalPort {port} | Select OwningProcess")
             print("        Stop-Process -Id <PID> -Force")
-            print(f"     2) 或换个端口启动：python waatchdog.py --port {port + 1}")
+            print(f"     2) 或换端口启动: python backend/server.py --port {port + 1}")
         sys.exit(1)
 
     http_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     http_thread.start()
-    _log(f"🌐 HTTP server started on http://127.0.0.1:{port}")
+    _log(f"HTTP 服务已启动: http://127.0.0.1:{port}")
+
+    os.makedirs(PDF_DIR, exist_ok=True)
 
     event_handler = PDFHandler()
     observer = Observer()
     observer.schedule(event_handler, PDF_DIR, recursive=True)
     observer.start()
-    _log(f"🔔 监控启动: {PDF_DIR}")
+    _log(f"监控已启动: {PDF_DIR}")
 
     try:
         while True:
@@ -1328,4 +1342,7 @@ if __name__ == "__main__":
         observer.join()
         httpd.shutdown()
         httpd.server_close()
-        _log("🛑 监控和 HTTP 服务器已停止")
+        _log("监控和 HTTP 服务已停止")
+
+
+

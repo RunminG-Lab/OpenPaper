@@ -1,20 +1,19 @@
-﻿<#
+<#
 .SYNOPSIS
-  卸载 PaperWaatchdog 自启动任务，并尝试结束正在运行的 waatchdog 进程。
+  卸载 OpenPaper 自启动任务，并尝试结束正在监听 8000 端口的 Python 进程。
 #>
 
 $ErrorActionPreference = 'SilentlyContinue'
-$TaskName = 'PaperWaatchdog'
+$TaskNames = @('OpenPaperServer', 'PaperWaatchdog')
 
-if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-    Stop-ScheduledTask  -TaskName $TaskName
-    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
-    Write-Host "✅ 已移除任务：$TaskName"
-} else {
-    Write-Host "未发现任务：$TaskName"
+foreach ($TaskName in $TaskNames) {
+    if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
+        Stop-ScheduledTask -TaskName $TaskName
+        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+        Write-Host "✅ 已移除任务：$TaskName"
+    }
 }
 
-# 尝试结束占用 8000 端口的 python 进程
 $conns = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
 foreach ($c in $conns) {
     try {

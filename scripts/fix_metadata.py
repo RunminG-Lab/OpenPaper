@@ -1,21 +1,33 @@
-import os
 import json
-from pathlib import Path
+import os
+import sys
 import urllib.parse
 
 PDF_DIR = "papers"
 METADATA_FILE = "metadata.json"
 
-def main():
+
+def configure_stdio() -> None:
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if not stream:
+            continue
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
+def main() -> None:
+    configure_stdio()
+
     if not os.path.exists(METADATA_FILE):
-        print("❌ metadata.json 不存在，无法修复")
+        print("metadata.json not found, nothing to repair")
         return
 
-    # 读取旧 metadata
-    with open(METADATA_FILE, "r", encoding="utf-8") as f:
-        old_metadata = json.load(f)
+    with open(METADATA_FILE, "r", encoding="utf-8") as file_obj:
+        old_metadata = json.load(file_obj)
 
-    # 构建：文件名 → metadata 反查索引
     filename_to_meta = {}
     for key, info in old_metadata.items():
         filename = os.path.basename(key).lower()
@@ -23,55 +35,47 @@ def main():
 
     new_metadata = {}
     repaired = 0
-    lost = 0
+    matched_old_keys = set()
 
-    # 扫描当前实际存在的 PDF
     for root, _, files in os.walk(PDF_DIR):
-        for fname in files:
-            if not fname.lower().endswith(".pdf"):
+        for filename in files:
+            if not filename.lower().endswith(".pdf"):
                 continue
 
-            filename_lower = fname.lower()
-            abs_path = os.path.join(root, fname)
+            abs_path = os.path.join(root, filename)
             rel_path = os.path.relpath(abs_path, PDF_DIR).replace("\\", "/")
+            filename_lower = filename.lower()
 
-            # 反向匹配 metadata（通过文件名）
             candidates = filename_to_meta.get(filename_lower)
-
             if not candidates:
-                print(f"⚠ 新 PDF：未找到旧 metadata 项：{rel_path}")
+                print(f"skip new pdf without previous metadata: {rel_path}")
                 continue
 
-            # 取第一项（通常不存在重复）
-            _, info = candidates[0]
+            old_key, info = candidates[0]
+            matched_old_keys.add(old_key)
 
-            quoted_rel_path = "/".join(urllib.parse.quote(p) for p in rel_path.split("/"))
-
-            # 更新新 metadata
-            new_metadata[rel_path.lower()] = {
+            quoted_rel_path = "/".join(urllib.parse.quote(part) for part in rel_path.split("/"))
+            file_key = rel_path.lower()
+            new_metadata[file_key] = {
                 **info,
-                "file_key": rel_path.lower(),
-                "pdf": f"{PDF_DIR}/{quoted_rel_path}",             # 相对路径
-                "pdf_local": f"{PDF_DIR}/{quoted_rel_path}",       # 使用相对路径
+                "file_key": file_key,
+                "pdf": f"{PDF_DIR}/{quoted_rel_path}",
+                "pdf_local": f"{PDF_DIR}/{quoted_rel_path}",
             }
-
             repaired += 1
 
-    # 检查丢失的 metadata 项（旧路径找不到 PDF）
-    for key in old_metadata:
-        file_exists = any(key.endswith(os.path.basename(k)) for k in new_metadata)
-        if not file_exists:
-            print(f"❌ metadata 丢失匹配项（文件已被移动或删除）：{key}")
-            lost += 1
+    lost_keys = [key for key in old_metadata.keys() if key not in matched_old_keys]
+    for key in lost_keys:
+        print(f"unmatched metadata entry: {key}")
 
-    # 覆写 metadata.json
-    with open(METADATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(new_metadata, f, indent=2, ensure_ascii=False)
+    with open(METADATA_FILE, "w", encoding="utf-8") as file_obj:
+        json.dump(new_metadata, file_obj, indent=2, ensure_ascii=False)
 
-    print("\n======================")
-    print(f"🔧 修复完成：{repaired} 条")
-    print(f"⚠ 未匹配到：{lost} 条")
     print("======================")
+    print(f"repaired entries: {repaired}")
+    print(f"unmatched entries: {len(lost_keys)}")
+    print("======================")
+
 
 if __name__ == "__main__":
     main()

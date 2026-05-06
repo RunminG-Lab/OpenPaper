@@ -1,15 +1,17 @@
 {
-  "demo/nips20_retrieval-augmented_generation_for_knowledge-intensive_nlp_tasks.pdf": {
-    "file_key": "demo/nips20_retrieval-augmented_generation_for_knowledge-intensive_nlp_tasks.pdf",
-    "title": "nips20_Retrieval-Augmented_Generation_for_Knowledge-Intensive_NLP_Tasks",
+  "demo/ase25_vrexplorer__a_model-based_approach_for_semi-automated_testing_of_virtual_reality_scenes.pdf": {
+    "file_key": "demo/ase25_vrexplorer__a_model-based_approach_for_semi-automated_testing_of_virtual_reality_scenes.pdf",
+    "title": "VRExplorer: A Model-based Approach for Semi-Automated Testing of Virtual Reality Scenes",
     "authors": "Unknown",
-    "year": "2020",
-    "venue": "NeurIPS",
+    "year": "2025",
+    "venue": "ASE",
     "tags": [
-      "demo"
+      "demo",
+      "VR",
+      "Testing"
     ],
-    "pdf": "papers/demo/nips20_Retrieval-Augmented_Generation_for_Knowledge-Intensive_NLP_Tasks.pdf",
-    "pdf_local": "papers/demo/nips20_Retrieval-Augmented_Generation_for_Knowledge-Intensive_NLP_Tasks.pdf",
+    "pdf": "papers/demo/ase25_VRExplorer__A_Model-based_Approach_for_Semi-Automated_Testing_of_Virtual_Reality_Scenes.pdf",
+    "pdf_local": "papers/demo/ase25_VRExplorer__A_Model-based_Approach_for_Semi-Automated_Testing_of_Virtual_Reality_Scenes.pdf",
     "read": false,
     "bib": "",
     "notes": "",
