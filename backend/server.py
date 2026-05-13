@@ -8,7 +8,6 @@ import json
 from urllib.parse import urlparse, parse_qs, unquote
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
 
 from backend.utils import configure_stdio, log, resolve_workspace_root, safe_rel
 from backend.metadata import (
@@ -16,6 +15,7 @@ from backend.metadata import (
     save_metadata, update_paper, load_metadata, atomic_write_metadata,
 )
 from backend.speedread import generate_speedread, test_speedread_config
+from backend.watcher import PDFHandler
 
 WORKSPACE_ROOT = resolve_workspace_root()
 
@@ -330,60 +330,6 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
     def log_message(self, format, *args):  # 静默模式
         return
 
-class PDFHandler(FileSystemEventHandler):
-    """Watch PDF changes under papers/ and debounce build.py runs."""
-
-    DEBOUNCE_SECONDS = 1.0
-
-    def __init__(self):
-        super().__init__()
-        self._lock = threading.Lock()
-        self._timer = None  # type: ignore[assignment]
-
-    def _is_pdf(self, path: str) -> bool:
-        return bool(path) and path.lower().endswith(".pdf")
-
-    def _schedule(self, reason: str, path: str):
-        # Log relative paths only to keep lines readable.
-        try:
-            short = os.path.relpath(path, WORKSPACE_ROOT)
-        except ValueError:
-            short = path
-        log(f"PDF {reason}: {short}")
-        with self._lock:
-            if self._timer is not None:
-                self._timer.cancel()
-            self._timer = threading.Timer(self.DEBOUNCE_SECONDS, self.run_build)
-            self._timer.daemon = True
-            self._timer.start()
-
-    def on_created(self, event):
-        if not event.is_directory and self._is_pdf(event.src_path):
-            self._schedule("新增", event.src_path)
-
-    def on_modified(self, event):
-        if not event.is_directory and self._is_pdf(event.src_path):
-            self._schedule("修改", event.src_path)
-
-    def on_deleted(self, event):
-        if not event.is_directory and self._is_pdf(event.src_path):
-            self._schedule("删除", event.src_path)
-
-    def on_moved(self, event):
-        if event.is_directory:
-            return
-        if self._is_pdf(getattr(event, "dest_path", "")):
-            self._schedule("移动(新位置)", event.dest_path)
-        elif self._is_pdf(event.src_path):
-            self._schedule("移动(旧位置)", event.src_path)
-
-    def run_build(self):
-        log("执行 build.py")
-        try:
-            subprocess.run([sys.executable, BUILD_SCRIPT], check=False)
-        except Exception as exc:
-            log(f"build 失败: {exc}")
-
 if __name__ == "__main__":
     configure_stdio()
     # Serve files from the repository root regardless of launch location.
@@ -428,7 +374,10 @@ if __name__ == "__main__":
 
     os.makedirs(PDF_DIR, exist_ok=True)
 
-    event_handler = PDFHandler()
+    event_handler = PDFHandler(
+        build_callback=lambda: subprocess.run([sys.executable, BUILD_SCRIPT], check=False),
+        workspace_root=WORKSPACE_ROOT,
+    )
     observer = Observer()
     observer.schedule(event_handler, PDF_DIR, recursive=True)
     observer.start()

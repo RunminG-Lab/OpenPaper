@@ -9,3 +9,4 @@ from backend.metadata import (
     save_metadata, update_paper,
 )
 from backend.speedread import generate_speedread, test_speedread_config
+from backend.watcher import PDFHandler
