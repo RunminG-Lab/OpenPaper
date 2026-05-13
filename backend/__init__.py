@@ -10,3 +10,13 @@ from backend.metadata import (
 )
 from backend.speedread import generate_speedread, test_speedread_config
 from backend.watcher import PDFHandler
+
+__all__ = [
+    "__version__",
+    "configure_stdio", "log", "resolve_workspace_root", "safe_rel",
+    "load_metadata", "atomic_write_metadata",
+    "delete_paper", "list_recycle_bin", "restore_paper", "purge_paper", "purge_all_papers",
+    "save_metadata", "update_paper",
+    "generate_speedread", "test_speedread_config",
+    "PDFHandler",
+]

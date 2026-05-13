@@ -330,12 +330,13 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
     def log_message(self, format, *args):  # 静默模式
         return
 
-if __name__ == "__main__":
+def main() -> None:
+    """Start the HTTP server and file watcher."""
     configure_stdio()
     # Serve files from the repository root regardless of launch location.
     os.chdir(WORKSPACE_ROOT)
-    
-    # Parse an optional port override: python backend/server.py --port 8001
+
+    # Parse an optional port override: python -m backend --port 8001
     port = HTTP_PORT
     argv = sys.argv[1:]
     for i, arg in enumerate(argv):
@@ -365,7 +366,7 @@ if __name__ == "__main__":
             else:
                 print("     1) 关闭旧服务: 在 Terminal 执行:")
                 print(f"        fuser -k {port}/tcp")
-            print(f"     2) 或换端口启动: python backend/server.py --port {port + 1}")
+            print(f"     2) 或换端口启动: python -m backend --port {port + 1}")
         sys.exit(1)
 
     http_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -392,6 +393,10 @@ if __name__ == "__main__":
         httpd.shutdown()
         httpd.server_close()
         log("监控和 HTTP 服务已停止")
+
+
+if __name__ == "__main__":
+    main()
 
 
 
