@@ -6,6 +6,8 @@ speed-read generation. Includes automatic fallback from multimodal to
 text-only mode when the model doesn't support image inputs.
 """
 
+from __future__ import annotations
+
 import base64
 import hashlib
 import json

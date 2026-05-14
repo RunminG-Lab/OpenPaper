@@ -1,5 +1,7 @@
 """Metadata I/O and recycle bin operations for OpenPaper."""
 
+from __future__ import annotations
+
 import json
 import os
 import re
