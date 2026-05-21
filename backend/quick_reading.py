@@ -23,6 +23,11 @@ from urllib import request, error
 from backend.utils import log, safe_rel
 from backend.metadata import load_metadata
 
+try:
+    import fitz
+except ImportError:
+    fitz = None
+
 _Result = namedtuple("_Result", ["status", "payload"])
 
 
@@ -211,31 +216,52 @@ def _resolve_pdf_entry(file_key, metadata, workspace_root):
 
 
 def _run_capture(cmd):
-    return subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-    )
+    try:
+        return subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+    except FileNotFoundError:
+        return None
+
+
+def _open_pdf_doc(abs_pdf):
+    if fitz is None:
+        raise RuntimeError("缺少 PDF 处理组件：未找到 pdfinfo/pdftotext/pdftoppm，且 PyMuPDF 不可用")
+    try:
+        return fitz.open(abs_pdf)
+    except Exception as exc:
+        raise RuntimeError(f"打开 PDF 失败: {exc}") from exc
 
 
 def _read_pdf_page_count(abs_pdf):
     result = _run_capture(["pdfinfo", abs_pdf])
-    if result.returncode != 0:
-        return 0
-    match = re.search(r"^Pages:\s+(\d+)", result.stdout, re.IGNORECASE | re.MULTILINE)
-    return int(match.group(1)) if match else 0
+    if result is not None and result.returncode == 0:
+        match = re.search(r"^Pages:\s+(\d+)", result.stdout, re.IGNORECASE | re.MULTILINE)
+        if match:
+            return int(match.group(1))
+    doc = _open_pdf_doc(abs_pdf)
+    try:
+        return len(doc)
+    finally:
+        doc.close()
 
 
 def _extract_pdf_pages_text(abs_pdf, page_count):
     result = _run_capture(["pdftotext", "-layout", "-enc", "UTF-8", abs_pdf, "-"])
-    if result.returncode != 0:
-        detail = _clean_page_text(result.stderr or result.stdout, 500)
-        raise RuntimeError(f"pdftotext 失败: {detail or '未知错误'}")
-    raw_pages = result.stdout.split("\f")
-    pages = [_clean_page_text(page) for page in raw_pages]
+    if result is not None and result.returncode == 0:
+        raw_pages = result.stdout.split("\f")
+        pages = [_clean_page_text(page) for page in raw_pages]
+    else:
+        doc = _open_pdf_doc(abs_pdf)
+        try:
+            pages = [_clean_page_text(page.get_text("text")) for page in doc]
+        finally:
+            doc.close()
     while pages and not pages[-1]:
         pages.pop()
     if page_count and len(pages) < page_count:
@@ -366,7 +392,7 @@ def _render_speedread_page_image(abs_pdf, file_key, page_no, workspace_root, qui
         prefix,
     ]
     result = _run_capture(cmd)
-    if result.returncode != 0 or not os.path.exists(target_jpg):
+    if result is None or result.returncode != 0 or not os.path.exists(target_jpg):
         fallback = [
             "pdftoppm",
             "-f", str(page_no),
@@ -378,9 +404,23 @@ def _render_speedread_page_image(abs_pdf, file_key, page_no, workspace_root, qui
             prefix,
         ]
         result = _run_capture(fallback)
-        if result.returncode != 0 or not os.path.exists(target_png):
-            detail = _clean_page_text(result.stderr or result.stdout, 300)
-            raise RuntimeError(f"渲染第 {page_no} 页失败: {detail or '未知错误'}")
+        if result is None or result.returncode != 0 or not os.path.exists(target_png):
+            doc = _open_pdf_doc(abs_pdf)
+            try:
+                if page_no < 1 or page_no > len(doc):
+                    raise RuntimeError(f"第 {page_no} 页超出 PDF 页数范围")
+                page = doc.load_page(page_no - 1)
+                page_width = float(page.rect.width) or 1.0
+                zoom = max(float(image_width) / page_width, 0.1)
+                pixmap = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
+                pixmap.save(target_png)
+            finally:
+                doc.close()
+            if not os.path.exists(target_png):
+                detail = ""
+                if result is not None:
+                    detail = _clean_page_text(result.stderr or result.stdout, 300)
+                raise RuntimeError(f"渲染第 {page_no} 页失败: {detail or '未知错误'}")
         return os.path.relpath(target_png, workspace_root).replace(os.sep, "/")
     return os.path.relpath(target_jpg, workspace_root).replace(os.sep, "/")
 
