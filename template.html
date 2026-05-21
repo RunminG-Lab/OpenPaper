@@ -128,19 +128,27 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 .ai-settings-tip { font-size:0.82em; color:#94a3b8; line-height:1.6; }
 
 /* ===== 速读 ===== */
-.speedread-strip { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px; }
-.speedread-status { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:4px 10px; font-size:0.82em; font-weight:600; }
-.speedread-status.idle { background:#eef2ff; color:#4338ca; }
-.speedread-status.running { background:#fff7ed; color:#c2410c; }
-.speedread-status.success { background:#ecfdf3; color:#047857; }
-.speedread-status.error { background:#fef2f2; color:#b91c1c; }
+.speedread-strip { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; }
+.speedread-strip.is-idle { gap:12px; }
+.speedread-status { display:inline-flex; align-items:center; gap:8px; border-radius:999px; padding:5px 11px; font-size:0.82em; font-weight:600; border:1px solid transparent; }
+.speedread-status .speedread-status-icon { line-height:1; font-size:0.95em; }
+.speedread-status.idle { padding:8px 16px; background:linear-gradient(135deg, #f1f5ff 0%, #e8edf8 100%); color:#3730a3; border-color:#dbe5ff; box-shadow:0 10px 24px rgba(79,70,229,0.08); }
+.speedread-status.idle .speedread-status-icon { color:#fb923c; }
+.speedread-status.running { background:#fff7ed; color:#c2410c; border-color:#fed7aa; }
+.speedread-status.success { background:#ecfdf3; color:#047857; border-color:#bbf7d0; }
+.speedread-status.error { background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
 .speedread-substatus { color:#94a3b8; font-size:0.82em; }
+.speedread-strip.is-idle .speedread-substatus { font-size:0.9em; }
 .speedread-error-inline { color:#b91c1c; font-size:0.82em; margin-top:4px; }
 .paper .actions .btn-speedread { background:var(--accent-color); color:#fff; border-color:var(--accent-color); font-weight:600; }
 .paper .actions .btn-speedread:hover { background:var(--accent-color-hover); }
+.paper .actions .btn-speedread.is-idle { box-shadow:0 10px 20px rgba(15, 23, 42, 0.08); }
 .paper .actions .btn-speedread[disabled] { opacity:0.72; cursor:wait; }
 .speedread-modal { max-width:1120px; }
-.speedread-head-actions { display:flex; align-items:center; gap:8px; }
+.speedread-head-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+.speedread-head-actions #speedread-delete[hidden] { display:none !important; }
+.speedread-head-actions .btn-danger-soft { color:#b91c1c; border-color:#fecaca; background:#fff5f5; }
+.speedread-head-actions .btn-danger-soft:hover { background:#fee2e2; }
 .speedread-meta { padding:10px 18px 12px; border-bottom:1px solid var(--surface-border); background:var(--surface-muted-bg); color:#64748b; font-size:0.86em; line-height:1.6; }
 .speedread-body { padding:18px; max-height:78vh; overflow:auto; display:flex; flex-direction:column; gap:16px; }
 .speedread-empty { color:#94a3b8; text-align:center; padding:28px 18px; font-style:italic; }
@@ -166,6 +174,7 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 @media (max-width: 900px) {
     .speedread-hero { grid-template-columns:1fr; }
     .speedread-modal { max-width:100%; }
+    .speedread-head-actions { width:100%; justify-content:flex-start; }
 }
 
 /* ===== 日志面板 ===== */
@@ -186,7 +195,11 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 .recycle-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid var(--surface-border); font-size:0.88em; }
 .recycle-item:last-child { border-bottom:none; }
 .recycle-item .ri-info { flex:1; min-width:0; }
+.recycle-item .ri-title-line { display:flex; align-items:center; gap:8px; min-width:0; }
 .recycle-item .ri-title { color:var(--surface-strong-color); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.recycle-item .ri-type { flex:none; display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:0.75em; font-weight:700; }
+.recycle-item .ri-type.paper { background:#eef2ff; color:#4338ca; }
+.recycle-item .ri-type.speedread { background:#fff7ed; color:#c2410c; }
 .recycle-item .ri-meta { color:#94a3b8; font-size:0.82em; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .recycle-item button { padding:3px 8px; font-size:0.8em; margin:0; }
 .recycle-empty { color:#94a3b8; font-style:italic; padding:18px; text-align:center; }
@@ -402,7 +415,7 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
                     <span class="recycle-meta" id="recycle-meta"></span>
                 </div>
                 <div id="recycle-list" class="recycle-list"><div class="recycle-empty">加载中…</div></div>
-                <div style="margin-top:8px; font-size:0.78em; color:#94a3b8;">删除的论文会被移到工作区下的 <code>.recycle_bin/</code> 临时文件夹，可以随时恢复；永久删除后不可恢复。</div>
+                <div style="margin-top:8px; font-size:0.78em; color:#94a3b8;">删除的论文和速读缓存都会被移到工作区下的 <code>.recycle_bin/</code> 临时文件夹，可以随时恢复；永久删除后不可恢复。</div>
             </div>
         </div>
     </div>
@@ -413,6 +426,7 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
         <div class="modal-head">
             <h2 id="speedread-modal-title">⚡ 论文速读</h2>
             <div class="speedread-head-actions">
+                <button type="button" id="speedread-delete" class="btn-danger-soft" hidden>🗑️ 删除速读</button>
                 <button type="button" id="speedread-regenerate">🔁 重新生成</button>
                 <button type="button" class="modal-close" id="speedread-close" title="关闭">✕</button>
             </div>
@@ -453,6 +467,7 @@ const speedReadModalTitle = document.getElementById('speedread-modal-title');
 const speedReadMeta = document.getElementById('speedread-meta');
 const speedReadBody = document.getElementById('speedread-body');
 const speedReadCloseBtn = document.getElementById('speedread-close');
+const speedReadDeleteBtn = document.getElementById('speedread-delete');
 const speedReadRegenerateBtn = document.getElementById('speedread-regenerate');
 
 let settingsModalApi = null;
@@ -728,22 +743,22 @@ function renderBulletList(items) {
 
 function getSpeedReadUiState(paper) {
     if (!paper) {
-        return { status: 'idle', statusText: '未生成速读', buttonText: '⚡生成速读', disabled: false };
+        return { status: 'idle', icon: '⚡', statusText: '未生成速读', buttonText: '生成速读', disabled: false };
     }
     if (speedReadGeneratingKeys.has(paper.file_key)) {
-        return { status: 'running', statusText: '生成中...', buttonText: '⚡生成中...', disabled: true };
+        return { status: 'running', icon: '⏳', statusText: '生成中...', buttonText: '生成中...', disabled: true };
     }
     const speedRead = paper.speed_read;
     if (!speedRead || !speedRead.status) {
-        return { status: 'idle', statusText: '未生成速读', buttonText: '⚡生成速读', disabled: false };
+        return { status: 'idle', icon: '⚡', statusText: '未生成速读', buttonText: '生成速读', disabled: false };
     }
     if (speedRead.status === 'success') {
-        return { status: 'success', statusText: '已生成速读', buttonText: '⚡打开速读', disabled: false };
+        return { status: 'success', icon: '⚡', statusText: '已生成速读', buttonText: '打开速读', disabled: false };
     }
     if (speedRead.status === 'error') {
-        return { status: 'error', statusText: '生成失败', buttonText: '⚡重试速读', disabled: false };
+        return { status: 'error', icon: '⚠', statusText: '生成失败', buttonText: '重新生成', disabled: false };
     }
-    return { status: 'running', statusText: '生成中...', buttonText: '⚡生成中...', disabled: true };
+    return { status: 'running', icon: '⏳', statusText: '生成中...', buttonText: '生成中...', disabled: true };
 }
 
 function replacePaperCardByKey(key) {
@@ -902,6 +917,11 @@ async function initApp() {
     initTagFilterUI();
     initSettingsModal();
     speedReadCloseBtn.addEventListener('click', closeSpeedReadModal);
+    speedReadDeleteBtn.addEventListener('click', () => {
+        if (activeSpeedReadKey) {
+            handleDeleteSpeedRead(activeSpeedReadKey);
+        }
+    });
     speedReadModal.addEventListener('click', (e) => {
         if (e.target === speedReadModal) closeSpeedReadModal();
     });
@@ -1321,14 +1341,17 @@ function createPaperCard(p, opts = {}) {
             <div class="note-content">${escapeHtml(p.notes)}</div>
         </div>` : ''}
 
-        <div class="speedread-strip">
-            <span class="speedread-status ${speedReadUi.status}">⚡ ${escapeHtml(speedReadUi.statusText)}</span>
+        <div class="speedread-strip ${speedReadUi.status === 'idle' ? 'is-idle' : ''}">
+            <span class="speedread-status ${speedReadUi.status}">
+                <span class="speedread-status-icon">${escapeHtml(speedReadUi.icon || '⚡')}</span>
+                <span class="speedread-status-label">${escapeHtml(speedReadUi.statusText)}</span>
+            </span>
             <span class="speedread-substatus">${speedReadHint}</span>
         </div>
         ${speedReadErrorHtml}
 
         <div class="actions" style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
-            <button type="button" class="btn-speedread" onclick="handleSpeedReadClick('${p.file_key}')" ${speedReadUi.disabled ? 'disabled' : ''} title="为当前这篇论文生成或打开速读">${escapeHtml(speedReadUi.buttonText)}</button>
+            <button type="button" class="btn-speedread ${speedReadUi.status === 'idle' ? 'is-idle' : ''}" onclick="handleSpeedReadClick('${p.file_key}')" ${speedReadUi.disabled ? 'disabled' : ''} title="为当前这篇论文生成或打开速读">${escapeHtml(speedReadUi.buttonText)}</button>
             ${p.pdf_local ? `<button type="button" onclick="openLocalSource('${encodedLocal}')" title="尝试通过 file:// 打开原始文件">打开源文件</button>` : ''}
             <button onclick="toggleEdit(this)">✏️ 编辑</button>
             <button type="button" onclick="openContainingFolder('${encodedLocal}')" title="打开文件所在文件夹并聚焦">📂 打开所在目录</button>
@@ -1457,6 +1480,34 @@ async function generateSpeedRead(key, { force = false, openAfterSuccess = true }
     }
 }
 
+async function handleDeleteSpeedRead(key = activeSpeedReadKey) {
+    const paper = papers.find(item => item.file_key === key);
+    if (!paper) return;
+    const speedReadUi = getSpeedReadUiState(paper);
+    if (speedReadUi.status === 'running') return;
+    const title = paper.title || key;
+    if (!confirm(`确定删除这篇论文的速读吗？\n\n${title}\n\n速读缓存和截图资源会被移到回收站，可在“设置 · 回收站”中恢复。`)) return;
+    try {
+        const response = await fetch('/api/delete-speedread', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_key: key }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+            showStatus('删除速读失败：' + (data.error || ('HTTP ' + response.status)), true);
+            return;
+        }
+        delete speedReadCacheIndex[key];
+        speedReadGeneratingKeys.delete(key);
+        updatePaperSpeedRead(key, null);
+        showStatus('已将速读移到回收站：' + title, false);
+        refreshRecycleView().catch(() => {});
+    } catch (err) {
+        showStatus('删除速读失败（请确认 backend/server.py 在运行）：' + err.message, true);
+    }
+}
+
 function closeSpeedReadModal() {
     activeSpeedReadKey = null;
     speedReadModal.classList.remove('open');
@@ -1493,8 +1544,17 @@ function renderSpeedReadModal(paper) {
 
     speedReadModalTitle.textContent = `⚡ ${paper.title || '论文速读'}`;
     speedReadMeta.innerHTML = headerBits.length ? escapeHtml(headerBits.join(' · ')) : '未生成速读';
+    const canDeleteSpeedRead = !!(speedRead && speedRead.status && speedRead.status !== 'running');
+    speedReadDeleteBtn.hidden = !canDeleteSpeedRead;
+    speedReadDeleteBtn.disabled = speedReadUi.status === 'running';
     speedReadRegenerateBtn.disabled = speedReadUi.status === 'running';
-    speedReadRegenerateBtn.textContent = speedReadUi.status === 'running' ? '⏳ 生成中...' : '🔁 重新生成';
+    if (speedReadUi.status === 'running') {
+        speedReadRegenerateBtn.textContent = '⏳ 生成中...';
+    } else if (speedReadUi.status === 'idle') {
+        speedReadRegenerateBtn.textContent = '⚡ 生成速读';
+    } else {
+        speedReadRegenerateBtn.textContent = '🔁 重新生成';
+    }
 
     if (speedReadUi.status === 'running') {
         speedReadBody.innerHTML = '<div class="speedread-loading">正在读取 PDF、抽取关键页并生成速读，请稍候...</div>';
@@ -1503,7 +1563,7 @@ function renderSpeedReadModal(paper) {
     if (!speedRead || speedRead.status !== 'success' || !speedRead.content) {
         const errorText = speedRead && speedRead.status === 'error'
             ? `<div class="speedread-panel"><h3>生成失败</h3><div class="speedread-paragraph">${renderTextBlock(speedRead.error || '未返回错误详情')}</div></div>`
-            : '<div class="speedread-empty">这篇论文还没有速读内容，点击“重新生成”或卡片上的 ⚡ 按钮开始生成。</div>';
+            : '<div class="speedread-empty">这篇论文还没有速读内容，点击“生成速读”即可开始。</div>';
         speedReadBody.innerHTML = errorText;
         return;
     }
@@ -2446,9 +2506,12 @@ async function refreshRecycleView() {
             return;
         }
         list.innerHTML = items.map(it => `
-            <div class="recycle-item" data-id="${escapeHtml(it.id)}">
+            <div class="recycle-item" data-id="${escapeHtml(it.id)}" data-type="${escapeHtml(it.item_type || 'paper')}">
                 <div class="ri-info">
-                    <div class="ri-title" title="${escapeHtml(it.title || it.original_rel)}">${escapeHtml(it.title || '(无标题)')}</div>
+                    <div class="ri-title-line">
+                        <div class="ri-title" title="${escapeHtml(it.title || it.original_rel)}">${escapeHtml(it.title || '(无标题)')}</div>
+                        <span class="ri-type ${escapeHtml(it.item_type || 'paper')}">${it.item_type === 'speedread' ? '速读' : '论文'}</span>
+                    </div>
                     <div class="ri-meta">${escapeHtml(it.original_rel)} · 🕐 ${escapeHtml(it.deleted_at || '')}</div>
                 </div>
                 <button type="button" class="ri-restore" title="恢复到原位置">♻️ 恢复</button>
@@ -2457,15 +2520,16 @@ async function refreshRecycleView() {
         `).join('');
         list.querySelectorAll('.recycle-item').forEach(row => {
             const id = row.getAttribute('data-id');
-            row.querySelector('.ri-restore').addEventListener('click', () => recycleRestore(id));
-            row.querySelector('.ri-purge').addEventListener('click', () => recyclePurge(id));
+            const itemType = row.getAttribute('data-type') || 'paper';
+            row.querySelector('.ri-restore').addEventListener('click', () => recycleRestore(id, itemType));
+            row.querySelector('.ri-purge').addEventListener('click', () => recyclePurge(id, itemType));
         });
     } catch (err) {
         list.innerHTML = `<div class="recycle-empty" style="color:#b91c1c;">加载失败：${escapeHtml(String(err.message || err))}</div>`;
     }
 }
 
-async function recycleRestore(id) {
+async function recycleRestore(id, itemType = 'paper') {
     try {
         const r = await fetch('/api/recycle-restore', {
             method: 'POST',
@@ -2477,16 +2541,22 @@ async function recycleRestore(id) {
             showStatus('恢复失败：' + (data.error || ('HTTP ' + r.status)), true);
             return;
         }
-        showStatus('已恢复', false);
+        showStatus(itemType === 'speedread' ? '已恢复速读' : '已恢复论文', false);
         refreshRecycleView();
-        await reloadAfterRecycleAction();
+        if (itemType === 'speedread') {
+            if (data.file_key) delete speedReadCacheIndex[data.file_key];
+            await loadMetadataViaFetch({ fallbackToEmbedded: true });
+        } else {
+            await reloadAfterRecycleAction();
+        }
     } catch (err) {
         showStatus('恢复失败：' + err.message, true);
     }
 }
 
-async function recyclePurge(id) {
-    if (!confirm('永久删除该论文文件？此操作不可撤销。')) return;
+async function recyclePurge(id, itemType = 'paper') {
+    const label = itemType === 'speedread' ? '这份速读缓存' : '这篇论文';
+    if (!confirm(`永久删除${label}？此操作不可撤销。`)) return;
     try {
         const r = await fetch('/api/recycle-purge', {
             method: 'POST',

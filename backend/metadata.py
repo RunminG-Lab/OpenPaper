@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -111,6 +112,48 @@ def _read_recycle_info(rid: str, recycle_dir: str) -> tuple[str | None, dict | N
         return item_dir, None
 
 
+def _recycle_item_type(info: dict | None) -> str:
+    item_type = (info or {}).get("item_type")
+    if item_type in ("paper", "speedread"):
+        return item_type
+    return "paper"
+
+
+def _speedread_cache_root(workspace_root: str, quick_reading_cache_dir: str) -> str:
+    if os.path.isabs(quick_reading_cache_dir):
+        return quick_reading_cache_dir
+    return os.path.join(workspace_root, quick_reading_cache_dir)
+
+
+def _speedread_cache_hash(file_key: str) -> str:
+    return hashlib.sha1(file_key.encode("utf-8")).hexdigest()[:16]
+
+
+def _speedread_cache_dir(file_key: str, workspace_root: str, quick_reading_cache_dir: str) -> str:
+    return os.path.join(_speedread_cache_root(workspace_root, quick_reading_cache_dir), _speedread_cache_hash(file_key))
+
+
+def _remove_speedread_index_entry(file_key: str, workspace_root: str, quick_reading_cache_dir: str) -> None:
+    index_file = os.path.join(_speedread_cache_root(workspace_root, quick_reading_cache_dir), "index.json")
+    try:
+        with open(index_file, "r", encoding="utf-8") as f:
+            index = json.load(f)
+    except Exception:
+        return
+
+    items = index.get("items") if isinstance(index, dict) else {}
+    if not isinstance(items, dict) or file_key not in items:
+        return
+
+    items.pop(file_key, None)
+    payload = {
+        "version": 1,
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "items": items,
+    }
+    _atomic_write_json(payload, index_file)
+
+
 # ---------------------------------------------------------------------------
 # recycle bin operations
 # ---------------------------------------------------------------------------
@@ -122,7 +165,6 @@ def delete_paper(
     recycle_dir: str,
 ) -> _Result:
     """Move a paper PDF into .recycle_bin/ and store metadata snapshot."""
-    # Resolve the original entry from metadata.json.
     meta_abs = os.path.join(workspace_root, metadata_file)
     try:
         with open(meta_abs, "r", encoding="utf-8") as f:
@@ -134,14 +176,12 @@ def delete_paper(
     if not entry:
         return _Result(404, {"ok": False, "error": f"metadata 中找不到 {file_key}"})
 
-    # Recover the real relative disk path from the encoded pdf path.
     pdf_local = entry.get("pdf_local") or entry.get("pdf") or ""
-    rel_disk = unquote(pdf_local)  # e.g. "papers/Embodied AI/foo.pdf"
+    rel_disk = unquote(pdf_local)
     abs_pdf = safe_rel(rel_disk, workspace_root)
     if not abs_pdf or not os.path.isfile(abs_pdf):
         return _Result(404, {"ok": False, "error": f"文件不存在: {rel_disk}"})
 
-    # Move the file into .recycle_bin/<id>/.
     recycle_root = os.path.join(workspace_root, recycle_dir)
     os.makedirs(recycle_root, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -161,6 +201,7 @@ def delete_paper(
 
     info = {
         "id": rid,
+        "item_type": "paper",
         "file_key": file_key,
         "original_rel": rel_disk.replace("\\", "/"),
         "deleted_at": datetime.now().isoformat(timespec="seconds"),
@@ -174,7 +215,71 @@ def delete_paper(
         log(f"写入回收站 info.json 失败: {exc}")
 
     log(f"已移入回收站: {rel_disk} -> {recycle_dir}/{rid}/")
-    return _Result(200, {"ok": True, "id": rid, "title": info["title"]})
+    return _Result(200, {"ok": True, "id": rid, "title": info["title"], "item_type": "paper"})
+
+
+def delete_speedread(
+    file_key: str,
+    workspace_root: str,
+    metadata_file: str,
+    quick_reading_cache_dir: str,
+    recycle_dir: str,
+) -> _Result:
+    """Move a paper speed-read cache directory into .recycle_bin/."""
+    file_key = (file_key or "").strip()
+    if not file_key:
+        return _Result(400, {"ok": False, "error": "缺少 file_key"})
+
+    cache_dir = _speedread_cache_dir(file_key, workspace_root, quick_reading_cache_dir)
+    cache_file = os.path.join(cache_dir, "speed_read.json")
+    if not os.path.isdir(cache_dir) or not os.path.isfile(cache_file):
+        return _Result(404, {"ok": False, "error": f"速读缓存不存在: {file_key}"})
+
+    metadata = load_metadata(metadata_file)
+    entry = metadata.get(file_key) if isinstance(metadata, dict) else {}
+    title = ""
+    if isinstance(entry, dict):
+        title = (entry.get("title") or "").strip()
+    if not title:
+        title = file_key
+
+    recycle_root = os.path.join(workspace_root, recycle_dir)
+    os.makedirs(recycle_root, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    rid = f"{ts}_{_slugify(title)}_speedread"
+    item_dir = os.path.join(recycle_root, rid)
+    os.makedirs(item_dir, exist_ok=True)
+
+    target_dir = os.path.join(item_dir, os.path.basename(cache_dir))
+    try:
+        shutil.move(cache_dir, target_dir)
+        _remove_speedread_index_entry(file_key, workspace_root, quick_reading_cache_dir)
+    except Exception as exc:
+        try:
+            if os.path.isdir(target_dir):
+                shutil.move(target_dir, cache_dir)
+            os.rmdir(item_dir)
+        except Exception:
+            pass
+        return _Result(500, {"ok": False, "error": f"移动速读缓存失败: {exc}"})
+
+    original_rel = os.path.relpath(cache_dir, workspace_root).replace(os.sep, "/")
+    info = {
+        "id": rid,
+        "item_type": "speedread",
+        "file_key": file_key,
+        "original_rel": original_rel,
+        "deleted_at": datetime.now().isoformat(timespec="seconds"),
+        "title": title,
+    }
+    try:
+        with open(os.path.join(item_dir, "info.json"), "w", encoding="utf-8") as f:
+            json.dump(info, f, ensure_ascii=False, indent=2)
+    except Exception as exc:
+        log(f"写入速读回收站 info.json 失败: {exc}")
+
+    log(f"已移入回收站: {original_rel} -> {recycle_dir}/{rid}/")
+    return _Result(200, {"ok": True, "id": rid, "title": title, "item_type": "speedread"})
 
 
 def list_recycle_bin(recycle_dir: str) -> _Result:
@@ -192,32 +297,27 @@ def list_recycle_bin(recycle_dir: str) -> _Result:
             try:
                 with open(info_path, "r", encoding="utf-8") as f:
                     info = json.load(f)
+                item_type = _recycle_item_type(info)
                 items.append({
                     "id": info.get("id", name),
                     "title": info.get("title", ""),
                     "original_rel": info.get("original_rel", ""),
                     "deleted_at": info.get("deleted_at", ""),
                     "file_key": info.get("file_key", ""),
+                    "item_type": item_type,
                 })
             except Exception:
                 continue
     return _Result(200, {"ok": True, "items": items})
 
 
-def restore_paper(
-    rid: str,
+def _restore_paper_item(
+    item_dir: str,
+    info: dict,
     workspace_root: str,
     build_script: str,
     metadata_file: str,
-    recycle_dir: str,
 ) -> _Result:
-    """Restore a paper from the recycle bin to its original location."""
-    item_dir, info = _read_recycle_info(rid, recycle_dir)
-    if not item_dir:
-        return _Result(404, {"ok": False, "error": "回收站项目不存在"})
-    if not info:
-        return _Result(500, {"ok": False, "error": "info.json 缺失或损坏"})
-
     rel_disk = info.get("original_rel") or ""
     target_abs = safe_rel(rel_disk, workspace_root)
     if not target_abs:
@@ -225,7 +325,6 @@ def restore_paper(
     if os.path.exists(target_abs):
         return _Result(409, {"ok": False, "error": "目标位置已存在同名文件"})
 
-    # Find the first PDF inside the recycle item directory.
     src_pdf = None
     for name in os.listdir(item_dir):
         if name.lower().endswith(".pdf"):
@@ -240,13 +339,11 @@ def restore_paper(
     except Exception as exc:
         return _Result(500, {"ok": False, "error": f"恢复文件失败: {exc}"})
 
-    # Rebuild immediately so metadata includes the restored file.
     try:
         subprocess.run([sys.executable, build_script], check=False, cwd=workspace_root)
     except Exception as exc:
         log(f"恢复后执行 build 失败: {exc}")
 
-    # Merge saved metadata back in so notes/read/tags survive restore.
     saved_meta = info.get("metadata") or {}
     file_key = info.get("file_key") or saved_meta.get("file_key")
     if file_key and saved_meta:
@@ -254,10 +351,8 @@ def restore_paper(
         try:
             with open(meta_abs, "r", encoding="utf-8") as f:
                 meta = json.load(f)
-            # Restore user fields, but keep build-generated path fields.
             current = meta.get(file_key) or {}
             merged = {**current, **saved_meta}
-            # Trust build output for path casing and encoding.
             if current.get("pdf"):
                 merged["pdf"] = current["pdf"]
             if current.get("pdf_local"):
@@ -267,14 +362,106 @@ def restore_paper(
         except Exception as exc:
             log(f"合并恢复 metadata 失败: {exc}")
 
-    # Remove the recycle item directory after restore.
     try:
         shutil.rmtree(item_dir)
     except Exception as exc:
         log(f"清理回收站目录失败: {exc}")
 
     log(f"已恢复: {rel_disk}")
-    return _Result(200, {"ok": True, "file_key": file_key})
+    return _Result(200, {"ok": True, "file_key": file_key, "item_type": "paper"})
+
+
+def _restore_speedread_item(
+    item_dir: str,
+    info: dict,
+    workspace_root: str,
+    metadata_file: str,
+    quick_reading_cache_dir: str,
+) -> _Result:
+    rel_cache_dir = info.get("original_rel") or ""
+    target_abs = safe_rel(rel_cache_dir, workspace_root)
+    if not target_abs:
+        return _Result(400, {"ok": False, "error": "原始速读路径非法"})
+    if os.path.exists(target_abs):
+        return _Result(409, {"ok": False, "error": "目标位置已存在同名缓存"})
+
+    src_dir = None
+    for name in os.listdir(item_dir):
+        if name == "info.json":
+            continue
+        candidate = os.path.join(item_dir, name)
+        if os.path.isdir(candidate):
+            src_dir = candidate
+            break
+    if not src_dir:
+        return _Result(500, {"ok": False, "error": "回收站中找不到速读缓存目录"})
+
+    os.makedirs(os.path.dirname(target_abs), exist_ok=True)
+    try:
+        shutil.move(src_dir, target_abs)
+    except Exception as exc:
+        return _Result(500, {"ok": False, "error": f"恢复速读缓存失败: {exc}"})
+
+    try:
+        from backend.quick_reading import rebuild_speedread_index
+
+        file_keys = list(load_metadata(metadata_file).keys())
+        file_key = (info.get("file_key") or "").strip()
+        if file_key and file_key not in file_keys:
+            file_keys.append(file_key)
+        rebuild_speedread_index(file_keys, workspace_root, quick_reading_cache_dir)
+    except Exception as exc:
+        log(f"恢复速读后重建索引失败: {exc}")
+
+    try:
+        shutil.rmtree(item_dir)
+    except Exception as exc:
+        log(f"清理速读回收站目录失败: {exc}")
+
+    log(f"已恢复速读: {rel_cache_dir}")
+    return _Result(200, {"ok": True, "file_key": info.get("file_key") or "", "item_type": "speedread"})
+
+
+def restore_recycle_item(
+    rid: str,
+    workspace_root: str,
+    build_script: str,
+    metadata_file: str,
+    recycle_dir: str,
+    quick_reading_cache_dir: str,
+) -> _Result:
+    """Restore a paper or speed-read item from the recycle bin."""
+    item_dir, info = _read_recycle_info(rid, recycle_dir)
+    if not item_dir:
+        return _Result(404, {"ok": False, "error": "回收站项目不存在"})
+    if not info:
+        return _Result(500, {"ok": False, "error": "info.json 缺失或损坏"})
+
+    if _recycle_item_type(info) == "speedread":
+        return _restore_speedread_item(item_dir, info, workspace_root, metadata_file, quick_reading_cache_dir)
+    return _restore_paper_item(item_dir, info, workspace_root, build_script, metadata_file)
+
+
+def restore_paper(
+    rid: str,
+    workspace_root: str,
+    build_script: str,
+    metadata_file: str,
+    recycle_dir: str,
+    quick_reading_cache_dir: str = "",
+) -> _Result:
+    """Backward-compatible wrapper for recycle restore."""
+    if quick_reading_cache_dir:
+        return restore_recycle_item(rid, workspace_root, build_script, metadata_file, recycle_dir, quick_reading_cache_dir)
+
+    item_dir, info = _read_recycle_info(rid, recycle_dir)
+    if not item_dir:
+        return _Result(404, {"ok": False, "error": "回收站项目不存在"})
+    if not info:
+        return _Result(500, {"ok": False, "error": "info.json 缺失或损坏"})
+    if _recycle_item_type(info) != "paper":
+        return _Result(400, {"ok": False, "error": "该回收站项目不是论文"})
+    return _restore_paper_item(item_dir, info, workspace_root, build_script, metadata_file)
 
 
 def purge_paper(rid: str, recycle_dir: str) -> _Result:

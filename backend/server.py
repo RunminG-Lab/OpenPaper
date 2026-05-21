@@ -16,7 +16,7 @@ if __package__ in (None, ""):
 
 from backend.utils import configure_stdio, log, resolve_workspace_root, safe_rel
 from backend.metadata import (
-    delete_paper, list_recycle_bin, restore_paper, purge_paper, purge_all_papers,
+    delete_paper, delete_speedread, list_recycle_bin, restore_recycle_item, purge_paper, purge_all_papers,
     save_metadata, update_paper, load_metadata, atomic_write_metadata,
 )
 from backend.quick_reading import (
@@ -291,6 +291,9 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/delete-paper":
             self.handle_delete_paper(payload)
             return
+        if parsed.path == "/api/delete-speedread":
+            self.handle_delete_speedread(payload)
+            return
         if parsed.path == "/api/recycle-restore":
             self.handle_recycle_restore(payload)
             return
@@ -323,13 +326,18 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
         result = delete_paper(file_key, WORKSPACE_ROOT, METADATA_FILE, RECYCLE_DIR)
         self._send_json(result.status, result.payload)
 
+    def handle_delete_speedread(self, payload):
+        file_key = (payload.get("file_key") or "").strip()
+        result = delete_speedread(file_key, WORKSPACE_ROOT, METADATA_FILE, QUICK_READING_CACHE_DIR, RECYCLE_DIR)
+        self._send_json(result.status, result.payload)
+
     def handle_recycle_list(self):
         result = list_recycle_bin(RECYCLE_DIR)
         self._send_json(result.status, result.payload)
 
     def handle_recycle_restore(self, payload):
         rid = payload.get("id")
-        result = restore_paper(rid, WORKSPACE_ROOT, BUILD_SCRIPT, METADATA_FILE, RECYCLE_DIR)
+        result = restore_recycle_item(rid, WORKSPACE_ROOT, BUILD_SCRIPT, METADATA_FILE, RECYCLE_DIR, QUICK_READING_CACHE_DIR)
         self._send_json(result.status, result.payload)
 
     def handle_recycle_purge(self, payload):
