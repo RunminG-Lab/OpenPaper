@@ -140,9 +140,11 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 .speedread-substatus { color:#94a3b8; font-size:0.82em; }
 .speedread-strip.is-idle .speedread-substatus { font-size:0.9em; }
 .speedread-error-inline { color:#b91c1c; font-size:0.82em; margin-top:4px; }
-.paper .actions .btn-speedread { background:var(--accent-color); color:#fff; border-color:var(--accent-color); font-weight:600; }
-.paper .actions .btn-speedread:hover { background:var(--accent-color-hover); }
+.paper .actions .btn-speedread { background:#f8fafc; color:#475569; border-color:#dbe5f0; font-weight:600; }
+.paper .actions .btn-speedread:hover { background:#eef4fb; border-color:#cbd5e1; }
 .paper .actions .btn-speedread.is-idle { box-shadow:0 10px 20px rgba(15, 23, 42, 0.08); }
+.paper .actions .btn-speedread.has-speedread { background:var(--accent-color); color:#fff; border-color:var(--accent-color); }
+.paper .actions .btn-speedread.has-speedread:hover { background:var(--accent-color-hover); }
 .paper .actions .btn-speedread[disabled] { opacity:0.72; cursor:wait; }
 .speedread-modal { max-width:1120px; }
 .speedread-head-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
@@ -1314,9 +1316,21 @@ function createPaperCard(p, opts = {}) {
         : (speedReadUi.status === 'error'
             ? `上次失败于 ${escapeHtml(formatSpeedReadTime((speedRead && speedRead.updated_at) || ''))}`
             : '按需生成并长期绑定到该论文');
+    const speedReadStatusBadgeHtml = speedReadUi.status === 'success'
+        ? ''
+        : `
+            <span class="speedread-status ${speedReadUi.status}">
+                <span class="speedread-status-icon">${escapeHtml(speedReadUi.icon || '⚡')}</span>
+                <span class="speedread-status-label">${escapeHtml(speedReadUi.statusText)}</span>
+            </span>`;
     const speedReadErrorHtml = speedRead && speedRead.status === 'error' && speedRead.error
         ? `<div class="speedread-error-inline">${escapeHtml(speedRead.error)}</div>`
         : '';
+    const speedReadButtonClass = [
+        'btn-speedread',
+        speedReadUi.status === 'idle' ? 'is-idle' : '',
+        speedReadUi.status === 'success' ? 'has-speedread' : '',
+    ].filter(Boolean).join(' ');
 
     div.innerHTML = `
         <div class="paper-header">
@@ -1342,16 +1356,13 @@ function createPaperCard(p, opts = {}) {
         </div>` : ''}
 
         <div class="speedread-strip ${speedReadUi.status === 'idle' ? 'is-idle' : ''}">
-            <span class="speedread-status ${speedReadUi.status}">
-                <span class="speedread-status-icon">${escapeHtml(speedReadUi.icon || '⚡')}</span>
-                <span class="speedread-status-label">${escapeHtml(speedReadUi.statusText)}</span>
-            </span>
+            ${speedReadStatusBadgeHtml}
             <span class="speedread-substatus">${speedReadHint}</span>
         </div>
         ${speedReadErrorHtml}
 
         <div class="actions" style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
-            <button type="button" class="btn-speedread ${speedReadUi.status === 'idle' ? 'is-idle' : ''}" onclick="handleSpeedReadClick('${p.file_key}')" ${speedReadUi.disabled ? 'disabled' : ''} title="为当前这篇论文生成或打开速读">${escapeHtml(speedReadUi.buttonText)}</button>
+            <button type="button" class="${speedReadButtonClass}" onclick="handleSpeedReadClick('${p.file_key}')" ${speedReadUi.disabled ? 'disabled' : ''} title="为当前这篇论文生成或打开速读">${escapeHtml(speedReadUi.buttonText)}</button>
             ${p.pdf_local ? `<button type="button" onclick="openLocalSource('${encodedLocal}')" title="尝试通过 file:// 打开原始文件">打开源文件</button>` : ''}
             <button onclick="toggleEdit(this)">✏️ 编辑</button>
             <button type="button" onclick="openContainingFolder('${encodedLocal}')" title="打开文件所在文件夹并聚焦">📂 打开所在目录</button>
@@ -1500,9 +1511,10 @@ async function handleDeleteSpeedRead(key = activeSpeedReadKey) {
         }
         delete speedReadCacheIndex[key];
         speedReadGeneratingKeys.delete(key);
+        closeSpeedReadModal();
         updatePaperSpeedRead(key, null);
         showStatus('已将速读移到回收站：' + title, false);
-        refreshRecycleView().catch(() => {});
+        await refreshRecycleView().catch(() => {});
     } catch (err) {
         showStatus('删除速读失败（请确认 backend/server.py 在运行）：' + err.message, true);
     }
