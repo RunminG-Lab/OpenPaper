@@ -113,6 +113,7 @@ def _rewrite_quick_reading_paths(speed_read: dict) -> bool:
     content = speed_read.get("content")
     if isinstance(content, dict):
         rewrite_assets(content.get("core_figures"))
+        rewrite_assets(content.get("figure_insights"))
     return changed
 
 
@@ -174,7 +175,7 @@ LOG_FILE = os.path.join(WORKSPACE_ROOT, "watchdog.log")
 LEGACY_LOG_FILE = os.path.join(WORKSPACE_ROOT, "waatchdog.log")
 
 HTTP_PORT = 8000
-SPEEDREAD_MAX_IMAGE_PAGES = 4
+SPEEDREAD_MAX_IMAGE_PAGES = 5
 SPEEDREAD_IMAGE_WIDTH = 1400
 SPEEDREAD_MAX_SOURCE_CHARS = 24000
 
@@ -270,6 +271,9 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/speedread-cache":
             self.handle_speedread_cache(parse_qs(parsed.query))
             return
+        if parsed.path == "/api/quick-reading":
+            self.handle_speedread_cache(parse_qs(parsed.query))
+            return
         if parsed.path == "/api/ping":
             self._send_json(200, {"ok": True, "service": "watchdog"})
             return
@@ -310,6 +314,9 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             self.handle_update_paper(payload)
             return
         if parsed.path == "/api/generate-speedread":
+            self.handle_generate_speedread(payload)
+            return
+        if parsed.path == "/api/quick-reading/generate":
             self.handle_generate_speedread(payload)
             return
         if parsed.path == "/api/list-speedread-cache":
@@ -376,11 +383,13 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
     def handle_generate_speedread(self, payload):
         file_key = (payload.get("file_key") or "").strip()
         api_config = payload.get("apiConfig") or {}
+        options = payload.get("options") or {}
         force = bool(payload.get("force"))
         result = generate_speedread(
             file_key, api_config, force,
             WORKSPACE_ROOT, METADATA_FILE, QUICK_READING_CACHE_DIR,
             SPEEDREAD_MAX_IMAGE_PAGES, SPEEDREAD_IMAGE_WIDTH, SPEEDREAD_MAX_SOURCE_CHARS,
+            options=options,
         )
         self._send_json(result.status, result.payload)
 
@@ -503,6 +512,14 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
     def log_message(self, format, *args):  # 静默模式
         return
 
+
+class QuietThreadingHTTPServer(ThreadingHTTPServer):
+    def handle_error(self, request, client_address):
+        exc_type, exc, _traceback = sys.exc_info()
+        if isinstance(exc, (BrokenPipeError, ConnectionAbortedError, ConnectionResetError)):
+            return
+        super().handle_error(request, client_address)
+
 def main() -> None:
     """Start the HTTP server and file watcher."""
     configure_stdio()
@@ -523,7 +540,7 @@ def main() -> None:
 
     # Start the HTTP server for static files and local APIs.
     try:
-        httpd = ThreadingHTTPServer(("127.0.0.1", port), PaperRequestHandler)
+        httpd = QuietThreadingHTTPServer(("127.0.0.1", port), PaperRequestHandler)
     except OSError as exc:
         print(f"无法绑定 127.0.0.1:{port}: {exc}")
         if getattr(exc, "winerror", None) == 10048 or "Address already in use" in str(exc):

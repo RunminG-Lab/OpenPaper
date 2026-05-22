@@ -172,11 +172,33 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 .speedread-figure-body h4 { margin:0; font-size:0.96em; color:var(--surface-strong-color); }
 .speedread-figure-note { color:var(--surface-text-color); font-size:0.9em; line-height:1.7; }
 .speedread-figure-note strong { color:var(--surface-strong-color); }
+.speedread-generate-modal { max-width:620px; }
+.speedread-generate-form { display:flex; flex-direction:column; gap:12px; }
+.speedread-generate-form label { display:block; color:var(--surface-strong-color); font-weight:600; font-size:0.92em; margin-bottom:4px; }
+.speedread-generate-form select,
+.speedread-generate-form textarea,
+.speedread-generate-form input[type=number] { margin:0; }
+.speedread-generate-form textarea { min-height:96px; line-height:1.6; resize:vertical; }
+.speedread-generate-row { display:grid; grid-template-columns:1fr 140px; gap:12px; align-items:end; }
+.speedread-generate-check { display:flex; align-items:center; gap:8px; color:var(--surface-text-color); }
+.speedread-generate-check input { width:auto; margin:0; }
+.speedread-generate-actions { display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-top:4px; }
+.speedread-generate-error { color:#b91c1c; font-size:0.88em; line-height:1.6; white-space:pre-wrap; }
+.speedread-progress { border:1px solid var(--surface-border); border-radius:10px; padding:12px; background:#fbfdfc; }
+.speedread-progress[hidden] { display:none !important; }
+.speedread-progress-title { color:var(--surface-strong-color); font-weight:700; margin-bottom:8px; }
+.speedread-progress-bar { height:8px; border-radius:999px; background:#dbe3e1; overflow:hidden; }
+.speedread-progress-fill { height:100%; width:0%; background:var(--accent-color); transition:width 0.25s ease; }
+.speedread-progress-meta { color:#64748b; font-size:0.84em; line-height:1.6; margin-top:8px; }
+.speedread-progress-steps { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+.speedread-progress-step { padding:3px 8px; border-radius:999px; background:#edf2f7; color:#64748b; font-size:0.76em; font-weight:600; }
+.speedread-progress-step.active { background:#e0f2fe; color:#0369a1; }
 
 @media (max-width: 900px) {
     .speedread-hero { grid-template-columns:1fr; }
     .speedread-modal { max-width:100%; }
     .speedread-head-actions { width:100%; justify-content:flex-start; }
+    .speedread-generate-row { grid-template-columns:1fr; }
 }
 
 /* ===== 日志面板 ===== */
@@ -329,13 +351,14 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
                     <div class="ai-settings-block">
                         <label for="ai-api-base">OpenAI 兼容 API 地址</label>
                         <input type="text" id="ai-api-base" placeholder="例如 https://api.openai.com/v1 或 https://api.vectorengine.cn/v1">
-                        <div class="ai-settings-tip">会自动补成 /chat/completions。支持 OpenAI、Claude、Qwen、GLM 等兼容接口。</div>
+                        <div class="ai-settings-tip">仅支持 OpenAI-compatible 接口，会自动补成 /chat/completions。</div>
+                        <div class="ai-settings-tip">Claude 建议通过 OpenRouter、LiteLLM、OneAPI、New API 等兼容层使用；Anthropic 原生地址不是当前请求格式。</div>
                         <div class="ai-settings-tip">像 VectorEngine 这类中转接口如果不支持图像输入，系统会自动降级为纯文本速读，不会直接失败。</div>
                         <div style="margin-top:8px; font-size:0.85em; color:#6b7280;">
                             <strong>常见地址：</strong>
                             <ul style="margin:4px 0; padding-left:18px;">
                                 <li>OpenAI: https://api.openai.com/v1</li>
-                                <li>Anthropic: https://api.anthropic.com/v1</li>
+                                <li>Claude 兼容层：OpenRouter / LiteLLM / OneAPI / New API 等 OpenAI-compatible 地址</li>
                                 <li>VectorEngine: https://api.vectorengine.cn/v1</li>
                                 <li>VolcEngine: https://maas-api.ml-platform.cn/v1</li>
                                 <li>Groq: https://api.groq.com/openai/v1</li>
@@ -360,7 +383,7 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
                                     <option value="gpt-4-vision">gpt-4-vision</option>
                                     <option value="gpt-4">gpt-4</option>
                                 </optgroup>
-                                <optgroup label="Claude (API: https://api.anthropic.com/v1)">
+                                <optgroup label="Claude (OpenAI-compatible 兼容层)">
                                     <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet (推荐)</option>
                                     <option value="claude-3-opus-20240229">claude-3-opus (强)</option>
                                     <option value="claude-3-haiku-20240307">claude-3-haiku (快)</option>
@@ -440,6 +463,52 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
     </div>
 </div>
 
+<div id="speedread-generate-modal" class="modal-mask" role="dialog" aria-modal="true">
+    <div class="modal speedread-generate-modal" onclick="event.stopPropagation()">
+        <div class="modal-head">
+            <h2 id="speedread-generate-title">⚡ 速读生成配置</h2>
+            <button type="button" class="modal-close" id="speedread-generate-close" title="关闭">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="speedread-generate-form">
+                <div class="speedread-generate-row">
+                    <div>
+                        <label for="speedread-generate-depth">速读深度</label>
+                        <select id="speedread-generate-depth">
+                            <option value="brief">简洁 brief</option>
+                            <option value="standard" selected>标准 standard</option>
+                            <option value="deep">深入 deep</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="speedread-generate-max-figures">最大图表数量</label>
+                        <input type="number" id="speedread-generate-max-figures" min="3" max="8" step="1" value="5">
+                    </div>
+                </div>
+                <div>
+                    <label for="speedread-generate-extra-prompt">额外提示词</label>
+                    <textarea id="speedread-generate-extra-prompt" placeholder="例如：请更关注实验指标和 baseline；请用更适合本科生的中文解释图表。"></textarea>
+                </div>
+                <label class="speedread-generate-check" for="speedread-generate-include-figures">
+                    <input type="checkbox" id="speedread-generate-include-figures" checked>
+                    <span>生成图表解读</span>
+                </label>
+                <div id="speedread-generate-progress" class="speedread-progress" hidden>
+                    <div id="speedread-generate-progress-title" class="speedread-progress-title">准备生成...</div>
+                    <div class="speedread-progress-bar"><div id="speedread-generate-progress-fill" class="speedread-progress-fill"></div></div>
+                    <div id="speedread-generate-progress-meta" class="speedread-progress-meta"></div>
+                    <div id="speedread-generate-progress-steps" class="speedread-progress-steps"></div>
+                </div>
+                <div id="speedread-generate-error" class="speedread-generate-error"></div>
+                <div class="speedread-generate-actions">
+                    <button type="button" id="speedread-generate-cancel">取消</button>
+                    <button type="button" id="speedread-generate-submit" class="toggle-on">开始生成</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <p id="status" class="status">初始化中...</p>
 
 <div id="papers" class="groups"></div>
@@ -471,10 +540,27 @@ const speedReadBody = document.getElementById('speedread-body');
 const speedReadCloseBtn = document.getElementById('speedread-close');
 const speedReadDeleteBtn = document.getElementById('speedread-delete');
 const speedReadRegenerateBtn = document.getElementById('speedread-regenerate');
+const speedReadGenerateModal = document.getElementById('speedread-generate-modal');
+const speedReadGenerateTitle = document.getElementById('speedread-generate-title');
+const speedReadGenerateCloseBtn = document.getElementById('speedread-generate-close');
+const speedReadGenerateCancelBtn = document.getElementById('speedread-generate-cancel');
+const speedReadGenerateSubmitBtn = document.getElementById('speedread-generate-submit');
+const speedReadGenerateDepth = document.getElementById('speedread-generate-depth');
+const speedReadGenerateExtraPrompt = document.getElementById('speedread-generate-extra-prompt');
+const speedReadGenerateIncludeFigures = document.getElementById('speedread-generate-include-figures');
+const speedReadGenerateMaxFigures = document.getElementById('speedread-generate-max-figures');
+const speedReadGenerateProgress = document.getElementById('speedread-generate-progress');
+const speedReadGenerateProgressTitle = document.getElementById('speedread-generate-progress-title');
+const speedReadGenerateProgressFill = document.getElementById('speedread-generate-progress-fill');
+const speedReadGenerateProgressMeta = document.getElementById('speedread-generate-progress-meta');
+const speedReadGenerateProgressSteps = document.getElementById('speedread-generate-progress-steps');
+const speedReadGenerateError = document.getElementById('speedread-generate-error');
 
 let settingsModalApi = null;
 let activeSpeedReadKey = null;
+let activeSpeedReadGenerateKey = null;
 const speedReadGeneratingKeys = new Set();
+const speedReadProgressTimers = new Map();
 let speedReadCacheIndex = {};
 
 function stripSpeedReadForMetadata(entry) {
@@ -879,6 +965,162 @@ function getSpeedReadConfigForRequest() {
     };
 }
 
+function defaultSpeedReadGenerateOptions() {
+    return {
+        depth: 'standard',
+        focus: ['general', 'experiment', 'reproduction', 'figure'],
+        extra_prompt: '',
+        include_figure_insights: true,
+        max_figures: 5,
+    };
+}
+
+function normalizeSpeedReadGenerateOptions(options = {}) {
+    const defaults = defaultSpeedReadGenerateOptions();
+    const depth = ['brief', 'standard', 'deep'].includes(options.depth) ? options.depth : defaults.depth;
+    const maxFigures = Math.max(3, Math.min(8, Number(options.max_figures || defaults.max_figures)));
+    return {
+        ...defaults,
+        ...options,
+        depth,
+        focus: Array.isArray(options.focus) && options.focus.length ? options.focus : defaults.focus,
+        extra_prompt: typeof options.extra_prompt === 'string' ? options.extra_prompt : '',
+        include_figure_insights: options.include_figure_insights !== false,
+        max_figures: maxFigures,
+    };
+}
+
+function readSpeedReadGenerateOptions() {
+    return normalizeSpeedReadGenerateOptions({
+        depth: speedReadGenerateDepth.value || 'standard',
+        focus: ['general', 'experiment', 'reproduction', 'figure'],
+        extra_prompt: speedReadGenerateExtraPrompt.value.trim(),
+        include_figure_insights: speedReadGenerateIncludeFigures.checked,
+        max_figures: Number(speedReadGenerateMaxFigures.value || 5),
+    });
+}
+
+function applySpeedReadGenerateOptions(options = {}) {
+    const normalized = normalizeSpeedReadGenerateOptions(options);
+    speedReadGenerateDepth.value = normalized.depth;
+    speedReadGenerateExtraPrompt.value = normalized.extra_prompt || '';
+    speedReadGenerateIncludeFigures.checked = normalized.include_figure_insights !== false;
+    speedReadGenerateMaxFigures.value = normalized.max_figures || 5;
+}
+
+function openQuickReadingPage(key) {
+    if (!key) return;
+    const url = 'quick-reading.html?file_key=' + encodeURIComponent(key);
+    window.location.href = url;
+}
+
+function renderSpeedReadProgressHtml(speedRead) {
+    const progress = (speedRead && speedRead.progress) || {};
+    const tokenStatus = progress.token_status || {};
+    const percent = Math.max(5, Math.min(100, Number(progress.percent || 10)));
+    const stages = [
+        ['queued', '排队'],
+        ['pdf', 'PDF'],
+        ['figures', '图表'],
+        ['grounding', '证据'],
+        ['model', '模型'],
+        ['normalize', '整理'],
+    ];
+    const activeStage = progress.stage || 'queued';
+    const stepsHtml = stages.map(([stage, label]) => `<span class="speedread-progress-step ${stage === activeStage ? 'active' : ''}">${label}</span>`).join('');
+    const tokenBits = [];
+    if (tokenStatus.source_chars) tokenBits.push(`证据字符 ${escapeHtml(String(tokenStatus.source_chars))}/${escapeHtml(String(tokenStatus.source_chars_limit || ''))}`);
+    if (tokenStatus.estimated_input_tokens) tokenBits.push(`估算输入 ${escapeHtml(String(tokenStatus.estimated_input_tokens))} tokens`);
+    if (tokenStatus.max_output_tokens) tokenBits.push(`输出上限 ${escapeHtml(String(tokenStatus.max_output_tokens))}`);
+    return `
+        <div class="speedread-progress">
+            <div class="speedread-progress-title">${escapeHtml(progress.message || '速读生成中...')}</div>
+            <div class="speedread-progress-bar"><div class="speedread-progress-fill" style="width:${percent}%"></div></div>
+            <div class="speedread-progress-meta">阶段：${escapeHtml(activeStage)} · ${percent}%${tokenBits.length ? ' · ' + tokenBits.join(' · ') : ''}</div>
+            <div class="speedread-progress-steps">${stepsHtml}</div>
+        </div>
+    `;
+}
+
+function updateSpeedReadGenerateProgress(speedRead) {
+    const progress = (speedRead && speedRead.progress) || {};
+    const tokenStatus = progress.token_status || {};
+    const percent = Math.max(5, Math.min(100, Number(progress.percent || 10)));
+    speedReadGenerateProgress.hidden = false;
+    speedReadGenerateProgressTitle.textContent = progress.message || '速读生成中...';
+    speedReadGenerateProgressFill.style.width = `${percent}%`;
+    const metaParts = [`阶段：${progress.stage || 'running'}`, `${percent}%`];
+    if (tokenStatus.source_chars) metaParts.push(`证据字符 ${tokenStatus.source_chars}/${tokenStatus.source_chars_limit || ''}`);
+    if (tokenStatus.estimated_input_tokens) metaParts.push(`估算输入 ${tokenStatus.estimated_input_tokens} tokens`);
+    if (tokenStatus.max_output_tokens) metaParts.push(`输出上限 ${tokenStatus.max_output_tokens}`);
+    speedReadGenerateProgressMeta.textContent = metaParts.join(' · ');
+    const stages = [
+        ['queued', '排队'],
+        ['pdf', 'PDF'],
+        ['figures', '图表'],
+        ['grounding', '证据'],
+        ['model', '模型'],
+        ['normalize', '整理'],
+    ];
+    const activeStage = progress.stage || 'queued';
+    speedReadGenerateProgressSteps.innerHTML = stages.map(([stage, label]) => `<span class="speedread-progress-step ${stage === activeStage ? 'active' : ''}">${label}</span>`).join('');
+}
+
+function openSpeedReadGenerateDialog(key, options = {}) {
+    const paper = papers.find(item => item.file_key === key);
+    if (!paper) return;
+    activeSpeedReadGenerateKey = key;
+    const existingOptions = (paper.speed_read && paper.speed_read.options) || {};
+    applySpeedReadGenerateOptions({ ...existingOptions, ...options });
+    speedReadGenerateTitle.textContent = `⚡ 生成速读：${paper.title || key}`;
+    speedReadGenerateError.textContent = '';
+    speedReadGenerateProgress.hidden = true;
+    speedReadGenerateSubmitBtn.disabled = speedReadGeneratingKeys.has(key);
+    speedReadGenerateSubmitBtn.textContent = speedReadGeneratingKeys.has(key) ? '生成中...' : '开始生成';
+    if (paper.speed_read && paper.speed_read.status === 'running') {
+        updateSpeedReadGenerateProgress(paper.speed_read);
+    }
+    speedReadGenerateModal.classList.add('open');
+}
+
+function closeSpeedReadGenerateDialog() {
+    activeSpeedReadGenerateKey = null;
+    speedReadGenerateModal.classList.remove('open');
+}
+
+async function submitSpeedReadGenerateDialog() {
+    if (!activeSpeedReadGenerateKey) return;
+    const key = activeSpeedReadGenerateKey;
+    const options = readSpeedReadGenerateOptions();
+    speedReadGenerateError.textContent = '';
+    await generateSpeedRead(key, { force: true, openAfterSuccess: true, options });
+}
+
+async function pollSpeedReadProgress(key) {
+    const speedRead = await fetchSpeedReadCache(key);
+    if (!speedRead) return;
+    if (activeSpeedReadGenerateKey === key && speedRead.status === 'running') {
+        updateSpeedReadGenerateProgress(speedRead);
+    }
+    if (speedRead.status !== 'running') {
+        stopSpeedReadProgressPolling(key);
+    }
+}
+
+function startSpeedReadProgressPolling(key) {
+    stopSpeedReadProgressPolling(key);
+    const timer = window.setInterval(() => {
+        pollSpeedReadProgress(key).catch(() => {});
+    }, 1200);
+    speedReadProgressTimers.set(key, timer);
+}
+
+function stopSpeedReadProgressPolling(key) {
+    const timer = speedReadProgressTimers.get(key);
+    if (timer) window.clearInterval(timer);
+    speedReadProgressTimers.delete(key);
+}
+
 function escapeHtml(str = '') {
     return String(str)
         .replace(/&/g, '&amp;')
@@ -929,8 +1171,16 @@ async function initApp() {
     });
     speedReadRegenerateBtn.addEventListener('click', () => {
         if (activeSpeedReadKey) {
-            generateSpeedRead(activeSpeedReadKey, { force: true, openAfterSuccess: true });
+            const key = activeSpeedReadKey;
+            closeSpeedReadModal();
+            openSpeedReadGenerateDialog(key, { force: true });
         }
+    });
+    speedReadGenerateCloseBtn.addEventListener('click', closeSpeedReadGenerateDialog);
+    speedReadGenerateCancelBtn.addEventListener('click', closeSpeedReadGenerateDialog);
+    speedReadGenerateSubmitBtn.addEventListener('click', submitSpeedReadGenerateDialog);
+    speedReadGenerateModal.addEventListener('click', (e) => {
+        if (e.target === speedReadGenerateModal) closeSpeedReadGenerateDialog();
     });
 
     // 应用持久化的初始 UI 状态
@@ -967,6 +1217,11 @@ function handleGlobalKeydown(e) {
     if (e.key === 'Escape' && speedReadModal.classList.contains('open')) {
         e.preventDefault();
         closeSpeedReadModal();
+        return;
+    }
+    if (e.key === 'Escape' && speedReadGenerateModal.classList.contains('open')) {
+        e.preventDefault();
+        closeSpeedReadGenerateDialog();
         return;
     }
     if (e.key === '/' && !isTyping) {
@@ -1401,30 +1656,27 @@ async function handleSpeedReadClick(key) {
     let speedReadUi = getSpeedReadUiState(paper);
     if (speedReadUi.status === 'success') {
         if (!paper.speed_read || !paper.speed_read.content) await fetchSpeedReadCache(key);
-        openSpeedReadModal(key);
+        openQuickReadingPage(key);
         return;
     }
     if (speedReadUi.status === 'running') {
-        openSpeedReadModal(key);
+        openSpeedReadGenerateDialog(key);
         return;
     }
     const cachedSpeedRead = await fetchSpeedReadCache(key);
     if (cachedSpeedRead && cachedSpeedRead.status === 'success') {
-        openSpeedReadModal(key);
+        openQuickReadingPage(key);
         return;
     }
     speedReadUi = getSpeedReadUiState(paper);
-    await generateSpeedRead(key, {
-        force: speedReadUi.status === 'error',
-        openAfterSuccess: true,
-    });
+    openSpeedReadGenerateDialog(key, { force: speedReadUi.status === 'error' });
 }
 
-async function generateSpeedRead(key, { force = false, openAfterSuccess = true } = {}) {
+async function generateSpeedRead(key, { force = false, openAfterSuccess = true, options = null } = {}) {
     const paper = papers.find(item => item.file_key === key);
     if (!paper) return;
     if (speedReadGeneratingKeys.has(key)) {
-        openSpeedReadModal(key);
+        openSpeedReadGenerateDialog(key);
         return;
     }
     if (!backendAvailable) {
@@ -1434,14 +1686,29 @@ async function generateSpeedRead(key, { force = false, openAfterSuccess = true }
     const apiConfig = getSpeedReadConfigForRequest();
     if (!apiConfig) return;
 
+    const requestOptions = normalizeSpeedReadGenerateOptions(options || {});
     speedReadGeneratingKeys.add(key);
+    startSpeedReadProgressPolling(key);
     updatePaperSpeedRead(key, {
         ...(paper.speed_read || {}),
+        version: 2,
         status: 'running',
         updated_at: new Date().toISOString(),
         error: '',
         model: apiConfig.model,
+        options: requestOptions,
+        progress: {
+            stage: 'queued',
+            message: '已提交生成任务',
+            percent: 5,
+            updated_at: new Date().toISOString(),
+        },
     });
+    if (activeSpeedReadGenerateKey === key) {
+        speedReadGenerateSubmitBtn.disabled = true;
+        speedReadGenerateSubmitBtn.textContent = '生成中...';
+        updateSpeedReadGenerateProgress(papers.find(item => item.file_key === key)?.speed_read);
+    }
     showStatus(`正在生成速读：${paper.title || key}`, false);
     if (activeSpeedReadKey === key) renderSpeedReadModal(paper);
 
@@ -1454,6 +1721,7 @@ async function generateSpeedRead(key, { force = false, openAfterSuccess = true }
                 file_key: key,
                 force,
                 apiConfig,
+                options: requestOptions,
             }),
         });
         responseData = await response.json().catch(() => ({}));
@@ -1467,7 +1735,8 @@ async function generateSpeedRead(key, { force = false, openAfterSuccess = true }
             content: null,
         });
         showStatus(`速读已生成：${paper.title || key}`, false);
-        if (openAfterSuccess) openSpeedReadModal(key);
+        if (activeSpeedReadGenerateKey === key) closeSpeedReadGenerateDialog();
+        if (openAfterSuccess) openQuickReadingPage(key);
     } catch (err) {
         const fallbackState = responseData && responseData.speed_read
             ? responseData.speed_read
@@ -1480,9 +1749,19 @@ async function generateSpeedRead(key, { force = false, openAfterSuccess = true }
         speedReadGeneratingKeys.delete(key);
         updatePaperSpeedRead(key, fallbackState);
         showStatus(`速读生成失败：${fallbackState.error || err.message || err}`, true);
-        openSpeedReadModal(key);
+        if (activeSpeedReadGenerateKey === key) {
+            speedReadGenerateError.textContent = fallbackState.error || err.message || String(err);
+            updateSpeedReadGenerateProgress(fallbackState);
+        } else {
+            openSpeedReadGenerateDialog(key);
+        }
     } finally {
         speedReadGeneratingKeys.delete(key);
+        stopSpeedReadProgressPolling(key);
+        if (activeSpeedReadGenerateKey === key) {
+            speedReadGenerateSubmitBtn.disabled = false;
+            speedReadGenerateSubmitBtn.textContent = '开始生成';
+        }
         replacePaperCardByKey(key);
         if (activeSpeedReadKey === key) {
             const latestPaper = papers.find(item => item.file_key === key);
@@ -1569,7 +1848,7 @@ function renderSpeedReadModal(paper) {
     }
 
     if (speedReadUi.status === 'running') {
-        speedReadBody.innerHTML = '<div class="speedread-loading">正在读取 PDF、抽取关键页并生成速读，请稍候...</div>';
+        speedReadBody.innerHTML = renderSpeedReadProgressHtml(speedRead || { progress: { message: '正在读取 PDF、抽取关键页并生成速读，请稍候...', percent: 12 } });
         return;
     }
     if (!speedRead || speedRead.status !== 'success' || !speedRead.content) {
@@ -1581,7 +1860,10 @@ function renderSpeedReadModal(paper) {
     }
 
     const content = speedRead.content || {};
-    const coreFigures = Array.isArray(content.core_figures) ? content.core_figures : [];
+    const coreFigures = Array.isArray(content.figure_insights) ? content.figure_insights : (Array.isArray(content.core_figures) ? content.core_figures : []);
+    const experimentReadText = typeof content.experiment_read === 'string'
+        ? content.experiment_read
+        : ((content.experiment_read && content.experiment_read.summary) || '论文中未明确说明');
     const figureCardsHtml = coreFigures.length
         ? `<div class="speedread-figure-grid">${coreFigures.map(item => {
             const imageHtml = item.image_path
@@ -1593,9 +1875,9 @@ function renderSpeedReadModal(paper) {
                     <div class="speedread-figure-body">
                         <span class="speedread-chip">Page ${escapeHtml(String(item.page || '?'))}${item.reason ? ` · ${escapeHtml(item.reason)}` : ''}</span>
                         <h4>${renderTextBlock(item.title || '关键图表')}</h4>
-                        <div class="speedread-figure-note"><strong>看什么：</strong>${renderTextBlock(item.what_to_look)}</div>
-                        <div class="speedread-figure-note"><strong>它说明了什么：</strong>${renderTextBlock(item.what_it_proves)}</div>
-                        <div class="speedread-figure-note"><strong>为什么重要：</strong>${renderTextBlock(item.why_important)}</div>
+                        <div class="speedread-figure-note"><strong>看什么：</strong>${renderTextBlock(item.what_to_look || item.how_to_read || item.what_it_shows)}</div>
+                        <div class="speedread-figure-note"><strong>它说明了什么：</strong>${renderTextBlock(item.what_it_proves || item.supports_claim)}</div>
+                        <div class="speedread-figure-note"><strong>为什么重要：</strong>${renderTextBlock(item.why_important || item.relation_to_method_or_experiment)}</div>
                     </div>
                 </article>
             `;
@@ -1632,7 +1914,7 @@ function renderSpeedReadModal(paper) {
 
         <section class="speedread-panel">
             <h3>实验速读</h3>
-            <div class="speedread-paragraph">${renderTextBlock(content.experiment_read)}</div>
+            <div class="speedread-paragraph">${renderTextBlock(experimentReadText)}</div>
         </section>
 
         <div class="speedread-grid">

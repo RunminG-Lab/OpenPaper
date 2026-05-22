@@ -166,7 +166,7 @@ some-paper-ase2023.pdf              → ASE 2023
 - [VectorEngine](https://vectorengine.cn/)：`gpt-4o`，支持多模态
 - 本地 [Ollama](https://ollama.com/)：`http://127.0.0.1:11434/v1`，无需联网
 
-速读结果的文字 JSON 与页面截图都持久化缓存在 `papers/.quick_reading_cache/` 目录，重新打开页面无需再次生成。若需刷新，点击速读面板内的 **重新生成** 按钮。
+速读结果的文字 JSON 与页面截图都持久化缓存在 `papers/.quick_reading_cache/` 目录，重新打开页面无需再次生成。已生成的速读会打开到 `quick-reading.html?file_key=...` 独立页面；若需刷新，点击 **重新生成** 后先确认本次生成配置。
 
 ### 速读摘要结构
 
@@ -192,11 +192,12 @@ OpenPaper/
 |   |-- server.py         # HTTP server + request routing
 |   |-- utils.py          # shared utilities (log, paths, stdio)
 |   |-- metadata.py       # metadata I/O + recycle bin
-|   |-- quick_reading.py  # AI speed-read pipeline
+|   |-- quick_reading/    # AI speed-read storage, prompts, PDF/figure extraction, LLM pipeline
 |   `-- watcher.py        # file system watcher
 |-- build.py              # build frontend from template
 |-- template.html         # frontend SPA template
 |-- index.html            # generated frontend page
+|-- quick-reading.html    # standalone speed-read page
 |-- stats.html            # statistics dashboard
 |-- scripts/
 |   |-- fix_metadata.py

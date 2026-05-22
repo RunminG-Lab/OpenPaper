@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>论文速读</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+:root {
+    --accent: #0f766e;
+    --accent-hover: #115e59;
+    --bg: #f6f7f8;
+    --surface: #ffffff;
+    --surface-soft: #eef3f2;
+    --border: #dbe3e1;
+    --text: #1f2937;
+    --muted: #64748b;
+    --strong: #0f172a;
+    --danger: #b91c1c;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--text); background: var(--bg); }
+button, input, textarea, select { font: inherit; }
+button { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+button:hover { background: var(--surface-soft); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { background: var(--accent-hover); }
+button:disabled { opacity: 0.65; cursor: wait; }
+.page-shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100vh; }
+.side-nav { position: sticky; top: 0; height: 100vh; padding: 18px 16px; border-right: 1px solid var(--border); background: var(--surface); overflow: auto; }
+.side-nav a { display: block; color: var(--muted); text-decoration: none; padding: 8px 10px; border-radius: 6px; margin-bottom: 4px; }
+.side-nav a:hover { color: var(--strong); background: var(--surface-soft); }
+.main { min-width: 0; }
+.topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding: 20px 24px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.title-block { min-width: 0; }
+.back-link { color: var(--accent); text-decoration: none; font-size: 0.9rem; display: inline-block; margin-bottom: 8px; }
+h1 { margin: 0 0 8px; color: var(--strong); font-size: clamp(1.5rem, 2.5vw, 2.2rem); line-height: 1.25; letter-spacing: 0; }
+.meta-line { color: var(--muted); font-size: 0.94rem; line-height: 1.65; }
+.top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.content { max-width: 1180px; padding: 20px 24px 48px; }
+.section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 16px; }
+.section h2 { margin: 0 0 12px; color: var(--strong); font-size: 1.12rem; letter-spacing: 0; }
+.lead { font-size: 1.05rem; line-height: 1.8; color: var(--strong); }
+.status-panel { text-align: center; padding: 42px 18px; color: var(--muted); }
+.status-panel strong { display: block; color: var(--strong); font-size: 1.2rem; margin-bottom: 8px; }
+.error-text { color: var(--danger); white-space: pre-wrap; }
+.qr-bullets { margin: 0; padding-left: 20px; }
+.qr-bullets li { margin-bottom: 8px; line-height: 1.75; }
+.qr-experiment-summary { line-height: 1.8; color: var(--strong); margin-bottom: 12px; }
+.qr-mini-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 12px 0 16px; }
+.qr-mini-metrics div { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: #fbfdfc; }
+.qr-mini-metrics span { display: block; color: var(--muted); font-size: 0.85rem; margin-bottom: 4px; }
+.qr-mini-metrics strong { color: var(--strong); line-height: 1.5; }
+.qr-subsection { margin-top: 16px; }
+.qr-subsection h3 { margin: 0 0 10px; font-size: 0.98rem; color: var(--strong); }
+.qr-record-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+.qr-record { border: 1px solid var(--border); background: #fbfdfc; border-radius: 8px; padding: 12px; }
+.qr-record p { margin: 6px 0 0; line-height: 1.65; }
+.qr-record-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; color: var(--strong); }
+.qr-record-head span { color: var(--accent); background: #e3f4f1; border-radius: 999px; padding: 2px 8px; font-size: 0.78rem; }
+.qr-page-ref { display: inline-flex; margin-top: 8px; color: var(--accent); font-size: 0.82rem; }
+.qr-two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.qr-empty-line { color: var(--muted); font-style: italic; }
+.qr-figure-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.qr-figure-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fbfdfc; }
+.qr-figure-media img { width: 100%; display: block; background: #e5e7eb; }
+.qr-image-placeholder { aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; color: var(--muted); background: #eef2f7; }
+.qr-figure-body { padding: 14px; }
+.qr-figure-body h3 { margin: 8px 0 10px; font-size: 1rem; color: var(--strong); }
+.qr-figure-body p { margin: 7px 0; line-height: 1.65; }
+.qr-chip { display: inline-flex; color: var(--accent); background: #e3f4f1; border-radius: 999px; padding: 3px 9px; font-size: 0.8rem; font-weight: 600; }
+.modal-mask { display: none; position: fixed; inset: 0; z-index: 50; background: rgba(15, 23, 42, 0.45); align-items: flex-start; justify-content: center; padding: 58px 18px; overflow: auto; }
+.modal-mask.open { display: flex; }
+.modal { width: min(620px, 100%); border-radius: 10px; background: var(--surface); box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22); overflow: hidden; }
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); background: var(--surface-soft); }
+.modal-head h2 { margin: 0; font-size: 1.08rem; color: var(--strong); }
+.modal-body { padding: 16px 18px; }
+.modal-row { margin-bottom: 14px; }
+.modal-row label { display: block; color: var(--strong); margin-bottom: 6px; font-weight: 600; }
+.modal-row textarea, .modal-row select, .modal-row input[type=number] { width: 100%; border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; color: var(--text); background: #fff; }
+.modal-row textarea { min-height: 94px; resize: vertical; line-height: 1.6; }
+.modal-check { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+.progress-wrap { display: none; margin-top: 14px; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: #fbfdfc; }
+.progress-wrap.open { display: block; }
+.progress-bar { height: 8px; border-radius: 999px; background: #dbe3e1; overflow: hidden; margin: 8px 0; }
+.progress-fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.3s ease; }
+.progress-meta { color: var(--muted); font-size: 0.88rem; line-height: 1.6; }
+@media (max-width: 820px) {
+    .page-shell { grid-template-columns: 1fr; }
+    .side-nav { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); display: flex; gap: 4px; overflow-x: auto; }
+    .side-nav a { white-space: nowrap; }
+    .topbar { flex-direction: column; }
+    .top-actions { justify-content: flex-start; }
+}
+</style>
+</head>
+<body>
+<div class="page-shell">
+    <nav class="side-nav" aria-label="速读章节">
+        <a href="#summary">省流总结</a>
+        <a href="#motivation">问题与动机</a>
+        <a href="#method">方法速读</a>
+        <a href="#experiment">实验速读</a>
+        <a href="#contributions">贡献</a>
+        <a href="#limitations">局限</a>
+        <a href="#figures">图表解读</a>
+        <a href="#deep-read">精读建议</a>
+    </nav>
+    <main class="main">
+        <header class="topbar">
+            <div class="title-block">
+                <a class="back-link" href="index.html">返回首页</a>
+                <h1 id="paper-title">论文速读</h1>
+                <div id="paper-meta" class="meta-line">加载中...</div>
+            </div>
+            <div class="top-actions">
+                <button id="open-pdf-btn" type="button">打开 PDF</button>
+                <button id="regenerate-btn" type="button" class="primary">生成速读</button>
+            </div>
+        </header>
+        <div id="content" class="content">
+            <div class="section status-panel"><strong>正在加载</strong>读取本地速读缓存...</div>
+        </div>
+    </main>
+</div>
+
+<div id="speedread-generate-modal" class="modal-mask" role="dialog" aria-modal="true">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-head">
+            <h2>速读生成配置</h2>
+            <button type="button" id="generate-close" title="关闭">关闭</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-row">
+                <label for="generate-depth">速读深度</label>
+                <select id="generate-depth">
+                    <option value="brief">简洁 brief</option>
+                    <option value="standard" selected>标准 standard</option>
+                    <option value="deep">深入 deep</option>
+                </select>
+            </div>
+            <div class="modal-row">
+                <label for="generate-extra-prompt">额外提示词</label>
+                <textarea id="generate-extra-prompt" placeholder="例如：请更关注实验指标和 baseline；请用更适合本科生的中文解释图表。"></textarea>
+            </div>
+            <div class="modal-row modal-check">
+                <input id="generate-include-figures" type="checkbox" checked>
+                <label for="generate-include-figures" style="margin:0; font-weight:500;">生成图表解读</label>
+            </div>
+            <div class="modal-row">
+                <label for="generate-max-figures">最大图表数量</label>
+                <input id="generate-max-figures" type="number" min="3" max="8" step="1" value="5">
+            </div>
+            <div id="generate-progress" class="progress-wrap">
+                <strong id="generate-progress-message">准备生成...</strong>
+                <div class="progress-bar"><div id="generate-progress-fill" class="progress-fill"></div></div>
+                <div id="generate-progress-meta" class="progress-meta"></div>
+            </div>
+            <div id="generate-error" class="error-text"></div>
+            <div class="modal-actions">
+                <button type="button" id="generate-cancel">取消</button>
+                <button type="button" id="generate-submit" class="primary">开始生成</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="assets/quick-reading-common.js"></script>
+<script>
+const SPEEDREAD_CONFIG_KEY = 'papers-visualizer-speedread-config-v1';
+const fileKey = new URLSearchParams(window.location.search).get('file_key') || '';
+const state = { metadata: {}, paper: null, speedRead: null, cacheIndex: {}, loading: true, error: '' };
+let progressTimer = null;
+
+const common = window.QuickReadingCommon;
+const contentEl = document.getElementById('content');
+const titleEl = document.getElementById('paper-title');
+const metaEl = document.getElementById('paper-meta');
+const openPdfBtn = document.getElementById('open-pdf-btn');
+const regenerateBtn = document.getElementById('regenerate-btn');
+const generateModal = document.getElementById('speedread-generate-modal');
+const generateDepth = document.getElementById('generate-depth');
+const generateExtraPrompt = document.getElementById('generate-extra-prompt');
+const generateIncludeFigures = document.getElementById('generate-include-figures');
+const generateMaxFigures = document.getElementById('generate-max-figures');
+const generateProgress = document.getElementById('generate-progress');
+const generateProgressMessage = document.getElementById('generate-progress-message');
+const generateProgressFill = document.getElementById('generate-progress-fill');
+const generateProgressMeta = document.getElementById('generate-progress-meta');
+const generateError = document.getElementById('generate-error');
+const generateSubmit = document.getElementById('generate-submit');
+
+function loadSpeedReadConfig() {
+    try {
+        const raw = localStorage.getItem(SPEEDREAD_CONFIG_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch (_) {
+        return {};
+    }
+}
+
+function getApiConfigForRequest() {
+    const config = loadSpeedReadConfig();
+    const apiBaseUrl = (config.apiBaseUrl || '').trim();
+    const apiKey = (config.apiKey || '').trim();
+    const model = (config.model || '').trim();
+    if (!apiBaseUrl || !apiKey || !model) {
+        throw new Error('请先回首页“设置 → 速读”填写 OpenAI-compatible API 地址、Key 和模型名称。');
+    }
+    return {
+        apiBaseUrl,
+        apiKey,
+        model,
+        timeoutSec: Number.isFinite(Number(config.timeoutSec)) ? Number(config.timeoutSec) : 180,
+    };
+}
+
+async function fetchJson(url) {
+    const response = await fetch(`${url}${url.includes('?') ? '&' : '?'}ts=${Date.now()}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+}
+
+async function loadMetadata() {
+    state.metadata = await fetchJson('papers/metadata.json');
+    state.paper = state.metadata[fileKey] || null;
+}
+
+async function loadCacheIndex() {
+    try {
+        const data = await fetchJson('papers/.quick_reading_cache/index.json');
+        state.cacheIndex = data && data.items && typeof data.items === 'object' ? data.items : {};
+    } catch (_) {
+        state.cacheIndex = {};
+    }
+}
+
+async function loadSpeedRead() {
+    state.speedRead = null;
+    const item = state.cacheIndex[fileKey];
+    if (item && item.path) {
+        try {
+            state.speedRead = await fetchJson(item.path);
+            return;
+        } catch (_) {}
+    }
+    try {
+        const data = await fetchJson('/api/quick-reading?file_key=' + encodeURIComponent(fileKey));
+        if (data && data.ok && data.speed_read) state.speedRead = data.speed_read;
+    } catch (_) {}
+}
+
+function renderHeader() {
+    const paper = state.paper || (state.speedRead && state.speedRead.paper) || {};
+    titleEl.textContent = paper.title || decodeURIComponent(fileKey || '论文速读');
+    const speedRead = state.speedRead || {};
+    const metaParts = [];
+    if (paper.venue || paper.year) metaParts.push([paper.venue, paper.year].filter(Boolean).join(' '));
+    if (paper.authors) metaParts.push(`作者：${paper.authors}`);
+    if (speedRead.generated_at || speedRead.updated_at) metaParts.push(`生成：${common.formatSpeedReadTime(speedRead.updated_at || speedRead.generated_at)}`);
+    if (speedRead.model) metaParts.push(`模型：${speedRead.model}`);
+    if (speedRead.request_mode) metaParts.push(`request mode：${speedRead.request_mode}`);
+    metaEl.textContent = metaParts.join(' · ') || '未生成速读';
+    regenerateBtn.textContent = speedRead.status === 'success' ? '重新生成' : '生成速读';
+    openPdfBtn.disabled = !(paper.pdf_local || paper.pdf);
+}
+
+function renderProgress(speedRead) {
+    const progress = speedRead && speedRead.progress ? speedRead.progress : {};
+    const token = progress.token_status || {};
+    const percent = Math.max(5, Math.min(100, Number(progress.percent || 18)));
+    return `
+        <div class="section status-panel">
+            <strong>${common.escapeHtml(progress.message || '速读生成中')}</strong>
+            <div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div>
+            <div class="progress-meta">
+                阶段：${common.escapeHtml(progress.stage || 'running')} · ${percent}%
+                ${token.estimated_input_tokens ? ` · 估算输入 ${common.escapeHtml(String(token.estimated_input_tokens))} tokens` : ''}
+                ${token.max_output_tokens ? ` · 输出上限 ${common.escapeHtml(String(token.max_output_tokens))}` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function renderSuccess() {
+    const speedRead = state.speedRead;
+    const normalized = common.normalizeSpeedReadContent(speedRead);
+    contentEl.innerHTML = `
+        <section id="summary" class="section">
+            <h2>快速省流总结</h2>
+            <div class="lead">${common.renderTextBlock(normalized.one_sentence)}</div>
+            ${common.renderBulletList(normalized.quick_takeaways)}
+        </section>
+        <section id="motivation" class="section"><h2>问题与动机</h2><div class="lead">${common.renderTextBlock(normalized.problem_and_motivation)}</div></section>
+        <section id="method" class="section"><h2>方法速读</h2><div class="lead">${common.renderTextBlock(normalized.method_overview)}</div>${common.renderBulletList(normalized.method_steps)}</section>
+        <section id="experiment" class="section"><h2>实验速读</h2>${common.renderExperimentRead(normalized.experiment_read)}</section>
+        <section id="contributions" class="section"><h2>贡献</h2>${common.renderBulletList(normalized.contributions)}</section>
+        <section id="limitations" class="section"><h2>局限</h2>${common.renderBulletList(normalized.limitations)}</section>
+        <section id="figures" class="section"><h2>图表解读</h2>${common.renderFigureInsights(normalized.figure_insights)}</section>
+        <section id="deep-read" class="section"><h2>精读建议</h2>${common.renderBulletList(normalized.deep_read_suggestions)}</section>
+    `;
+}
+
+function renderPage() {
+    renderHeader();
+    const speedRead = state.speedRead;
+    if (state.error) {
+        contentEl.innerHTML = `<div class="section status-panel"><strong>读取失败</strong><div class="error-text">${common.escapeHtml(state.error)}</div></div>`;
+        return;
+    }
+    if (!fileKey) {
+        contentEl.innerHTML = '<div class="section status-panel"><strong>缺少 file_key</strong>请从首页论文卡片进入速读页。</div>';
+        return;
+    }
+    if (!speedRead) {
+        contentEl.innerHTML = '<div class="section status-panel"><strong>未生成</strong>这篇论文还没有速读缓存。<br><br><button type="button" class="primary" onclick="openSpeedReadGenerateDialog(fileKey)">生成速读</button></div>';
+        return;
+    }
+    if (speedRead.status === 'running') {
+        contentEl.innerHTML = renderProgress(speedRead);
+        return;
+    }
+    if (speedRead.status === 'error') {
+        contentEl.innerHTML = `<div class="section status-panel"><strong>生成失败</strong><div class="error-text">${common.escapeHtml(speedRead.error || '未返回错误详情')}</div><br><button type="button" class="primary" onclick="openSpeedReadGenerateDialog(fileKey)">重新生成</button></div>`;
+        return;
+    }
+    if (!speedRead.content) {
+        contentEl.innerHTML = '<div class="section status-panel"><strong>缓存不完整</strong>没有读取到 content 字段。</div>';
+        return;
+    }
+    renderSuccess();
+}
+
+async function refreshAll() {
+    state.error = '';
+    try {
+        await loadMetadata();
+        await loadCacheIndex();
+        await loadSpeedRead();
+    } catch (err) {
+        state.error = err && err.message ? err.message : String(err);
+    }
+    renderPage();
+}
+
+function readGenerateOptions() {
+    return {
+        depth: generateDepth.value || 'standard',
+        focus: ['general', 'experiment', 'reproduction', 'figure'],
+        extra_prompt: generateExtraPrompt.value.trim(),
+        include_figure_insights: generateIncludeFigures.checked,
+        max_figures: Math.max(3, Math.min(8, Number(generateMaxFigures.value || 5))),
+    };
+}
+
+function applyGenerateDefaults(options = {}) {
+    generateDepth.value = options.depth || 'standard';
+    generateExtraPrompt.value = options.extra_prompt || '';
+    generateIncludeFigures.checked = options.include_figure_insights !== false;
+    generateMaxFigures.value = options.max_figures || 5;
+}
+
+function updateGenerateProgress(speedRead) {
+    const progress = speedRead && speedRead.progress ? speedRead.progress : {};
+    const token = progress.token_status || {};
+    const percent = Math.max(5, Math.min(100, Number(progress.percent || 8)));
+    generateProgress.classList.add('open');
+    generateProgressMessage.textContent = progress.message || '速读生成中...';
+    generateProgressFill.style.width = `${percent}%`;
+    generateProgressMeta.textContent = [
+        `阶段：${progress.stage || 'running'}`,
+        `${percent}%`,
+        token.estimated_input_tokens ? `估算输入 ${token.estimated_input_tokens} tokens` : '',
+        token.max_output_tokens ? `输出上限 ${token.max_output_tokens}` : '',
+    ].filter(Boolean).join(' · ');
+}
+
+function openSpeedReadGenerateDialog(key, options = {}) {
+    if (!key) return;
+    const existingOptions = (state.speedRead && state.speedRead.options) || {};
+    applyGenerateDefaults({ ...existingOptions, ...options });
+    generateError.textContent = '';
+    generateProgress.classList.remove('open');
+    generateSubmit.disabled = false;
+    generateSubmit.textContent = '开始生成';
+    generateModal.classList.add('open');
+}
+
+function closeSpeedReadGenerateDialog() {
+    generateModal.classList.remove('open');
+}
+
+async function pollProgressUntilDone() {
+    await loadCacheIndex().catch(() => {});
+    await loadSpeedRead().catch(() => {});
+    if (state.speedRead) {
+        if (state.speedRead.status === 'running') updateGenerateProgress(state.speedRead);
+        renderPage();
+    }
+}
+
+function startProgressPolling() {
+    stopProgressPolling();
+    progressTimer = window.setInterval(() => {
+        pollProgressUntilDone().catch(() => {});
+    }, 1200);
+}
+
+function stopProgressPolling() {
+    if (progressTimer) window.clearInterval(progressTimer);
+    progressTimer = null;
+}
+
+async function submitSpeedReadGenerateDialog() {
+    generateError.textContent = '';
+    let apiConfig;
+    try {
+        apiConfig = getApiConfigForRequest();
+    } catch (err) {
+        generateError.textContent = err.message || String(err);
+        return;
+    }
+    const options = readGenerateOptions();
+    generateSubmit.disabled = true;
+    generateSubmit.textContent = '生成中...';
+    updateGenerateProgress({ progress: { stage: 'queued', message: '已提交生成任务', percent: 5 } });
+    startProgressPolling();
+    try {
+        const response = await fetch('/api/quick-reading/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_key: fileKey, force: true, apiConfig, options }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
+        state.speedRead = data.speed_read;
+        await loadCacheIndex().catch(() => {});
+        closeSpeedReadGenerateDialog();
+        renderPage();
+    } catch (err) {
+        generateError.textContent = err && err.message ? err.message : String(err);
+        await pollProgressUntilDone().catch(() => {});
+    } finally {
+        stopProgressPolling();
+        generateSubmit.disabled = false;
+        generateSubmit.textContent = '开始生成';
+    }
+}
+
+openPdfBtn.addEventListener('click', () => {
+    const paper = state.paper || {};
+    const target = paper.pdf_local || paper.pdf;
+    if (target) window.open(target, '_blank');
+});
+regenerateBtn.addEventListener('click', () => openSpeedReadGenerateDialog(fileKey));
+document.getElementById('generate-close').addEventListener('click', closeSpeedReadGenerateDialog);
+document.getElementById('generate-cancel').addEventListener('click', closeSpeedReadGenerateDialog);
+generateSubmit.addEventListener('click', submitSpeedReadGenerateDialog);
+generateModal.addEventListener('click', (event) => {
+    if (event.target === generateModal) closeSpeedReadGenerateDialog();
+});
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && generateModal.classList.contains('open')) closeSpeedReadGenerateDialog();
+});
+
+refreshAll();
+</script>
+</body>
+</html>
