@@ -213,12 +213,16 @@ def main() -> None:
     with open(TEMPLATE_HTML, "r", encoding="utf-8") as file_obj:
         html = file_obj.read()
 
-    html = html.replace("const EMBEDDED_PAPERS = [];", f"const EMBEDDED_PAPERS = {json.dumps(papers, ensure_ascii=False)};")
+    if os.path.exists(OUTPUT_HTML):
+        with open(OUTPUT_HTML, "r", encoding="utf-8") as file_obj:
+            if file_obj.read() == html:
+                print(f"refreshed metadata for {len(papers)} papers; {OUTPUT_HTML} unchanged")
+                return
 
     with open(OUTPUT_HTML, "w", encoding="utf-8") as file_obj:
         file_obj.write(html)
 
-    print(f"generated {OUTPUT_HTML} with {len(papers)} papers")
+    print(f"refreshed metadata for {len(papers)} papers and generated stable {OUTPUT_HTML}")
 
 
 if __name__ == "__main__":

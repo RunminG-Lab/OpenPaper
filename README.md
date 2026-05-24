@@ -194,9 +194,9 @@ OpenPaper/
 |   |-- metadata.py       # metadata I/O + recycle bin
 |   |-- quick_reading/    # AI speed-read storage, prompts, PDF/figure extraction, LLM pipeline
 |   `-- watcher.py        # file system watcher
-|-- build.py              # build frontend from template
+|-- build.py              # refresh metadata/stats and copy template to index
 |-- template.html         # frontend SPA template
-|-- index.html            # generated frontend page
+|-- index.html            # generated stable frontend shell; data loads from papers/metadata.json
 |-- quick-reading.html    # standalone speed-read page
 |-- stats.html            # statistics dashboard
 |-- scripts/
