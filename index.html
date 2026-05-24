@@ -27,7 +27,7 @@
     --control-text-color: #111111;
     --control-border: #d1d5db;
 }
-body { font-family: "Segoe UI", system-ui, sans-serif; background:var(--bg-color); margin:20px; color:var(--text-color); }
+body { font-family: "Segoe UI", system-ui, sans-serif; background:var(--bg-color); margin:20px; color:var(--text-color); position:relative; }
 h1 { color:var(--title-color); margin-bottom:8px; }
 .paper { border:1px solid #ddd; padding:12px; margin:10px 0; background:var(--card-bg); color:var(--card-text-color); border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.04); transition:background 0.2s ease, border-color 0.2s ease; content-visibility:auto; contain-intrinsic-size:150px; }
 .paper .actions { margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; }
@@ -43,6 +43,18 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 .note-content { display:none; margin-top:6px; white-space:pre-wrap; font-size:0.95em; color:#5c3d00; }
 .toolbar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
 .toolbar button { flex:none; }
+.top-tools { position:absolute; top:4px; right:44px; z-index:30; display:flex; justify-content:flex-end; }
+.export-menu-wrap { position:relative; }
+.export-trigger { background:var(--accent-color); color:#fff; border-color:var(--accent-color); font-weight:700; min-width:86px; }
+.export-trigger:hover { background:var(--accent-color-hover); }
+.export-panel { display:none; position:absolute; top:calc(100% + 8px); right:0; width:292px; padding:12px; border:1px solid var(--surface-border); border-radius:8px; background:var(--surface-bg); color:var(--surface-text-color); box-shadow:0 14px 36px rgba(15,23,42,0.18); }
+.export-panel.open { display:block; }
+.export-option { display:flex; align-items:center; gap:8px; margin-bottom:10px; color:var(--surface-text-color); font-size:0.92em; }
+.export-option input { width:auto; margin:0; }
+.export-action { width:100%; text-align:left; font-weight:600; }
+.export-action[disabled] { opacity:0.68; cursor:wait; }
+.export-count { color:#64748b; font-size:0.82em; margin:2px 0 10px; }
+.export-hint { color:#94a3b8; font-size:0.8em; line-height:1.5; margin-top:8px; }
 /* 顶部统计条 */
 .stats-bar { display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-bottom:12px; padding:8px 14px; background:var(--surface-bg); border:1px solid var(--surface-border); border-radius:10px; font-size:0.9em; color:var(--surface-text-color); }
 .stats-bar .stat { display:inline-flex; align-items:center; gap:4px; }
@@ -195,6 +207,8 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 .speedread-progress-step.active { background:#e0f2fe; color:#0369a1; }
 
 @media (max-width: 900px) {
+    .top-tools { position:static; justify-content:flex-start; margin:-2px 0 12px; }
+    .export-panel { left:0; right:auto; max-width:calc(100vw - 40px); }
     .speedread-hero { grid-template-columns:1fr; }
     .speedread-modal { max-width:100%; }
     .speedread-head-actions { width:100%; justify-content:flex-start; }
@@ -256,6 +270,21 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 </head>
 <body>
 <h1>📚 Papers Visualizer</h1>
+
+<div class="top-tools">
+    <div class="export-menu-wrap">
+        <button id="export-trigger" class="export-trigger" type="button" title="导出当前筛选结果">导出</button>
+        <div id="export-panel" class="export-panel" role="menu">
+            <div id="export-count" class="export-count">当前筛选 0 篇</div>
+            <label class="export-option">
+                <input type="checkbox" id="export-include-speedread">
+                包含省流总结
+            </label>
+            <button type="button" id="export-md" class="export-action">导出当前筛选为 .md</button>
+            <div class="export-hint">按当前筛选、排序和页面标题格式导出；省流总结只包含已经生成成功的速读。</div>
+        </div>
+    </div>
+</div>
 
 <div id="stats-bar" class="stats-bar"></div>
 
@@ -533,6 +562,11 @@ const toggleAllBtn = document.getElementById('toggle-all-groups');
 const toggleViewModeBtn = document.getElementById('toggle-view-mode');
 const toggleUnreadBtn = document.getElementById('toggle-unread');
 const statsBar = document.getElementById('stats-bar');
+const exportTrigger = document.getElementById('export-trigger');
+const exportPanel = document.getElementById('export-panel');
+const exportCount = document.getElementById('export-count');
+const exportIncludeSpeedRead = document.getElementById('export-include-speedread');
+const exportMdBtn = document.getElementById('export-md');
 const speedReadModal = document.getElementById('speedread-modal');
 const speedReadModalTitle = document.getElementById('speedread-modal-title');
 const speedReadMeta = document.getElementById('speedread-meta');
@@ -1130,7 +1164,203 @@ function escapeHtml(str = '') {
         .replace(/'/g, '&#39;');
 }
 
+function initExportMenu() {
+    if (!exportTrigger || !exportPanel || !exportMdBtn) return;
+    exportTrigger.addEventListener('click', (event) => {
+        event.stopPropagation();
+        updateExportMenuCount();
+        exportPanel.classList.toggle('open');
+    });
+    exportPanel.addEventListener('click', event => event.stopPropagation());
+    exportMdBtn.addEventListener('click', exportFilteredMarkdown);
+    document.addEventListener('click', closeExportMenu);
+}
+
+function closeExportMenu() {
+    if (exportPanel) exportPanel.classList.remove('open');
+}
+
+function updateExportMenuCount() {
+    if (!exportCount) return;
+    exportCount.textContent = `当前筛选 ${getCurrentExportPapers().length} 篇`;
+}
+
+function getCurrentExportPapers() {
+    const filtered = getFilteredList(searchInput.value);
+    if (isFlatMode) return sortPapers(filtered, currentSortBy);
+
+    const ordered = [];
+    const seen = new Set();
+    Object.values(groupByTag(filtered)).forEach(items => {
+        sortPapers(items, currentSortBy).forEach(paper => {
+            const key = paper.file_key || paper.title;
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            ordered.push(paper);
+        });
+    });
+    return ordered;
+}
+
+function cleanExportText(value) {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') {
+        value = value.text || value.summary || value.name || '';
+    }
+    return String(value).replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+}
+
+function oneLineExportText(value) {
+    return cleanExportText(value).replace(/\s+/g, ' ').trim();
+}
+
+function getExportDisplayTitle(paper) {
+    const title = oneLineExportText(paper.title || paper.file_key || 'Untitled');
+    const venue = oneLineExportText(paper.venue);
+    const year = oneLineExportText(paper.year);
+    const prefix = [venue, year].filter(Boolean).join(' ');
+    return prefix ? `[${prefix}] ${title}` : title;
+}
+
+function getExportAuthors(paper) {
+    const authors = oneLineExportText(paper.authors);
+    if (!authors) return '';
+    const normalized = authors.toLowerCase();
+    if (['unknown', 'unknow', 'n/a', 'na', 'none', 'null', 'undefined'].includes(normalized)) return '';
+    return authors;
+}
+
+function getSpeedReadSummaryLines(speedRead) {
+    if (!speedRead || speedRead.status !== 'success' || !speedRead.content) return [];
+    const content = speedRead.content || {};
+    const lines = [];
+    const oneSentence = cleanExportText(content.one_sentence);
+    if (oneSentence) lines.push(oneSentence);
+    if (Array.isArray(content.quick_takeaways)) {
+        content.quick_takeaways
+            .map(cleanExportText)
+            .filter(Boolean)
+            .forEach(item => lines.push(`- ${item}`));
+    }
+    return lines;
+}
+
+async function ensureExportSpeedRead(paper) {
+    if (!paper || !paper.file_key) return null;
+    if (paper.speed_read && paper.speed_read.status === 'success' && paper.speed_read.content) {
+        return paper.speed_read;
+    }
+    try {
+        return await fetchSpeedReadCache(paper.file_key);
+    } catch (_) {
+        return paper.speed_read || null;
+    }
+}
+
+function formatExportTimestamp(date = new Date()) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function buildMarkdownExport(papersToExport, includeSummaries) {
+    const lines = [
+        '# OpenPaper 导出',
+        '',
+        `导出时间：${formatExportTimestamp()}`,
+        `筛选结果：${papersToExport.length} 篇`,
+        '',
+    ];
+    let summaryCount = 0;
+
+    papersToExport.forEach((paper, index) => {
+        lines.push(`## ${index + 1}. ${getExportDisplayTitle(paper)}`);
+        const authors = getExportAuthors(paper);
+        if (authors) lines.push('', `作者：${authors}`);
+
+        if (includeSummaries) {
+            const summaryLines = getSpeedReadSummaryLines(paper.speed_read);
+            if (summaryLines.length) {
+                summaryCount += 1;
+                lines.push('', '省流总结：', '', ...summaryLines);
+            }
+        }
+        lines.push('');
+    });
+
+    return {
+        markdown: `${lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
+        summaryCount,
+    };
+}
+
+async function chooseMarkdownSaveHandle(filename) {
+    if (!window.showSaveFilePicker || !window.isSecureContext) return null;
+    return window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{ description: 'Markdown', accept: { 'text/markdown': ['.md'] } }],
+    });
+}
+
+function triggerExportDownload(payload, filename, mimeType) {
+    const blob = new Blob([payload], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+}
+
+async function exportFilteredMarkdown() {
+    const papersToExport = getCurrentExportPapers();
+    if (!papersToExport.length) {
+        showStatus('当前筛选结果为空，无法导出', true);
+        closeExportMenu();
+        return;
+    }
+
+    const includeSummaries = !!(exportIncludeSpeedRead && exportIncludeSpeedRead.checked);
+    const filename = `openpaper_filtered_${new Date().toISOString().slice(0, 10)}.md`;
+    closeExportMenu();
+
+    let saveHandle = null;
+    try {
+        saveHandle = await chooseMarkdownSaveHandle(filename);
+    } catch (err) {
+        if (err?.name === 'AbortError') return;
+        showStatus('打开保存窗口失败，已改为浏览器下载：' + err.message, true);
+    }
+
+    const originalText = exportMdBtn.textContent;
+    exportMdBtn.disabled = true;
+    exportMdBtn.textContent = '导出中...';
+    try {
+        if (includeSummaries) {
+            showStatus(`正在读取 ${papersToExport.length} 篇论文的速读缓存...`, false);
+            await Promise.all(papersToExport.map(ensureExportSpeedRead));
+        }
+        const { markdown, summaryCount } = buildMarkdownExport(papersToExport, includeSummaries);
+        if (saveHandle) {
+            const writable = await saveHandle.createWritable();
+            await writable.write(markdown);
+            await writable.close();
+        } else {
+            triggerExportDownload(markdown, filename, 'text/markdown;charset=utf-8');
+        }
+        const summaryText = includeSummaries ? `，其中 ${summaryCount} 篇包含省流总结` : '';
+        showStatus(`已导出 ${papersToExport.length} 篇论文${summaryText}`, false);
+    } catch (err) {
+        showStatus('导出失败：' + (err.message || String(err)), true);
+    } finally {
+        exportMdBtn.disabled = false;
+        exportMdBtn.textContent = originalText;
+    }
+}
+
 async function initApp() {
+    initExportMenu();
     bindBtn.addEventListener('click', handleBindFile);
     downloadBtn.addEventListener('click', () => persistMetadata({ auto: false }));
     reloadBtn.addEventListener('click', () => {
@@ -1222,6 +1452,11 @@ function handleGlobalKeydown(e) {
     if (e.key === 'Escape' && speedReadGenerateModal.classList.contains('open')) {
         e.preventDefault();
         closeSpeedReadGenerateDialog();
+        return;
+    }
+    if (e.key === 'Escape' && exportPanel && exportPanel.classList.contains('open')) {
+        e.preventDefault();
+        closeExportMenu();
         return;
     }
     if (e.key === '/' && !isTyping) {
