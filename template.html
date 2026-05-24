@@ -2095,6 +2095,13 @@ function renderSpeedReadModal(paper) {
     }
 
     const content = speedRead.content || {};
+    const figureCandidates = Array.isArray(speedRead.candidate_pages) ? speedRead.candidate_pages : [];
+    const figureCandidateById = new Map(figureCandidates.map(asset => [String(asset.id || ''), asset]));
+    const speedReadImageVersion = encodeURIComponent(speedRead.updated_at || speedRead.generated_at || '');
+    const withSpeedReadImageVersion = path => {
+        if (!path || !speedReadImageVersion) return path || '';
+        return `${path}${String(path).includes('?') ? '&' : '?'}v=${speedReadImageVersion}`;
+    };
     const coreFigures = Array.isArray(content.figure_insights) ? content.figure_insights : (Array.isArray(content.core_figures) ? content.core_figures : []);
     const experimentReadText = typeof content.experiment_read === 'string'
         ? content.experiment_read
@@ -2106,21 +2113,23 @@ function renderSpeedReadModal(paper) {
         .join(' ');
     const figureCardsHtml = coreFigures.length
         ? `<div class="speedread-figure-grid">${coreFigures.map(item => {
+            const asset = figureCandidateById.get(String(item.figure_id || item.id || item.candidate_id || '')) || item;
             const summaryParts = [
                 item.summary,
                 item.what_to_look || item.how_to_read || item.what_it_shows,
                 item.what_it_proves || item.supports_claim,
                 item.why_important || item.relation_to_method_or_experiment,
             ].map(cleanFigureSummaryText).filter(Boolean);
-            const figureSummary = summaryParts.length ? [...new Set(summaryParts)].join(' ') : (item.caption || '论文中未明确说明');
-            const imageHtml = item.image_path
-                ? `<img src="${escapeHtml(item.image_path)}" alt="page ${escapeHtml(String(item.page || ''))}">`
+            const figureSummary = summaryParts.length ? [...new Set(summaryParts)].join(' ') : (item.caption || asset.caption || '论文中未明确说明');
+            const imagePath = withSpeedReadImageVersion(asset.image_path || item.image_path || '');
+            const imageHtml = imagePath
+                ? `<img src="${escapeHtml(imagePath)}" alt="page ${escapeHtml(String(item.page || asset.page || ''))}">`
                 : '<div class="speedread-figure-placeholder">无页面截图</div>';
             return `
                 <article class="speedread-figure-card">
                     ${imageHtml}
                     <div class="speedread-figure-body">
-                        <span class="speedread-chip">Page ${escapeHtml(String(item.page || '?'))}${item.reason ? ` · ${escapeHtml(item.reason)}` : ''}</span>
+                        <span class="speedread-chip">Page ${escapeHtml(String(item.page || asset.page || '?'))}${(item.reason || asset.reason) ? ` · ${escapeHtml(item.reason || asset.reason)}` : ''}</span>
                         <h4>${renderTextBlock(item.title || '关键图表')}</h4>
                         <div class="speedread-figure-note">${renderTextBlock(figureSummary)}</div>
                     </div>

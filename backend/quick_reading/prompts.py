@@ -5,10 +5,10 @@ from .models import clean_page_text
 
 def _depth_instruction(depth):
     if depth == "brief":
-        return "保持简洁，但实验速读仍必须结构化，不得只写一两句话。"
+        return "保持简洁，但实验速读仍必须结构化，不得只写一两句话；每个图表 summary 写 1 句，约 60-100 字。"
     if depth == "deep":
-        return "适当展开方法细节、实验设计和复现难点，尤其要解释 baseline、ablation、dataset 和 metric。"
-    return "详略适中，优先保证实验和图表解释完整。"
+        return "适当展开方法细节、实验设计和复现难点，尤其要解释 baseline、ablation、dataset 和 metric；每个图表 summary 写 3-4 句，约 180-260 字。"
+    return "详略适中，优先保证实验和图表解释完整；每个图表 summary 写 2 句，约 100-160 字。"
 
 
 def build_speedread_prompt(paper_meta, grounding_text, candidate_pages, options):
@@ -16,7 +16,7 @@ def build_speedread_prompt(paper_meta, grounding_text, candidate_pages, options)
     focus = ", ".join(options.get("focus") or [])
     candidate_count = len(candidate_pages or [])
     figure_instruction = (
-        f"需要生成 figure_insights，尽量覆盖全部候选图表（当前 {candidate_count} 个），每个候选只写一段 summary。"
+        f"需要生成 figure_insights，尽量覆盖全部候选图表（当前 {candidate_count} 个），每个候选只写一段 summary；figure_id 必须原样使用候选 id，不得编造 id 或把不同页的解释混到一起。"
         if options.get("include_figure_insights")
         else "不要生成图表解读，figure_insights 返回空数组。"
     )
@@ -38,7 +38,8 @@ def build_speedread_prompt(paper_meta, grounding_text, candidate_pages, options)
         "4. 不要夸奖论文，不要写营销式语言，不要把摘要机械翻译成中文。\n"
         "5. 用户特别关注实验，因此 experiment_read 必须细，不能压缩成一两句话。\n"
         "6. 仅输出一个合法 JSON 对象，不要输出 Markdown 代码块或额外解释。\n\n"
-        "7. figure_insights 只能用一段 summary 解释图表，不要拆成“展示什么/先看哪里/视觉元素/支撑结论”等小标题。\n\n"
+        "7. figure_insights 只能用一段 summary 解释图表，不要拆成“展示什么/先看哪里/视觉元素/支撑结论”等小标题。\n"
+        "8. figure_insights 的 figure_id 必须匹配候选列表中的 id；如果无法确认候选截图对应的内容，summary 写“论文中未明确说明”。\n\n"
         f"速读深度：{depth}。{_depth_instruction(depth)}\n"
         f"关注方向：{focus or 'general, experiment, reproduction, figure'}。\n"
         f"图表要求：{figure_instruction}\n\n"
@@ -72,7 +73,7 @@ def build_speedread_prompt(paper_meta, grounding_text, candidate_pages, options)
         "  \"figure_insights\": [\n"
         "    {\n"
         "      \"figure_id\": \"fig_001\", \"page\": 8, \"label\": \"Figure 2\", \"title\": \"中文标题\",\n"
-        "      \"summary\": \"用 2-4 句直接解释这张图/表：图里是什么、应该怎么读、它支撑论文哪部分结论。不要使用固定小标题。\",\n"
+        "      \"summary\": \"按速读深度要求，用一段话直接解释这张图/表：图里是什么、应该怎么读、它支撑论文哪部分结论。不要使用固定小标题。\",\n"
         "      \"page_refs\": [8]\n"
         "    }\n"
         "  ],\n"

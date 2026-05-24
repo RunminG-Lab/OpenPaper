@@ -279,19 +279,35 @@ def normalize_experiment_read(value):
 def _asset_maps(figure_assets):
     by_id = {}
     by_page = {}
+    by_label = {}
     for asset in figure_assets or []:
         if not isinstance(asset, dict):
             continue
         asset_id = asset.get("id")
         if asset_id:
             by_id[str(asset_id)] = asset
+        label = _clean_match_token(asset.get("label") or asset.get("caption"))
+        if label:
+            by_label[label] = asset
         try:
             page_no = int(asset.get("page") or 0)
         except (TypeError, ValueError):
             page_no = 0
-        if page_no and page_no not in by_page:
-            by_page[page_no] = asset
-    return by_id, by_page
+        if page_no:
+            by_page.setdefault(page_no, []).append(asset)
+    return by_id, by_page, by_label
+
+
+def _clean_match_token(value):
+    return re.sub(r"[^a-z0-9\u4e00-\u9fff]+", "", str(value or "").lower())
+
+
+def _figure_summary_limit(depth):
+    if depth == "brief":
+        return 140
+    if depth == "deep":
+        return 300
+    return 220
 
 
 def _compact_figure_summary(*values):
@@ -303,22 +319,22 @@ def _compact_figure_summary(*values):
     return " ".join(parts) if parts else MISSING_TEXT
 
 
-def _summary_from_asset(asset):
-    caption = clean_figure_summary(asset.get("caption"), "", 520)
+def _summary_from_asset(asset, limit=220):
+    caption = clean_figure_summary(asset.get("caption"), "", min(520, limit))
     if caption and caption != MISSING_TEXT:
         return caption
-    excerpt = text_value(asset.get("excerpt"), "", 520)
+    excerpt = text_value(asset.get("excerpt"), "", min(520, limit))
     if excerpt:
         page = asset.get("page") or "?"
         return f"这张候选图表来自第 {page} 页，正文附近说明：{excerpt}"
     return MISSING_TEXT
 
 
-def _summary_from_item(item, asset):
+def _summary_from_item(item, asset, limit=220):
     direct = clean_figure_summary(
         item.get("summary") or item.get("interpretation") or item.get("analysis") or item.get("description"),
         "",
-        900,
+        limit,
     )
     if direct:
         return direct
@@ -331,11 +347,11 @@ def _summary_from_item(item, asset):
     )
     if summary != MISSING_TEXT:
         return summary
-    return _summary_from_asset(asset) if isinstance(asset, dict) else MISSING_TEXT
+    return _summary_from_asset(asset, limit) if isinstance(asset, dict) else MISSING_TEXT
 
 
-def _figure_from_asset(asset):
-    summary = _summary_from_asset(asset)
+def _figure_from_asset(asset, summary_limit=220):
+    summary = _summary_from_asset(asset, summary_limit)
     return {
         "id": asset.get("id", ""),
         "kind": asset.get("kind", "page_snapshot"),
@@ -350,12 +366,34 @@ def _figure_from_asset(asset):
     }
 
 
-def normalize_figure_insights(value, figure_assets):
-    by_id, by_page = _asset_maps(figure_assets)
+def _match_figure_asset(item, by_id, by_page, by_label, used_asset_ids):
+    figure_id = str(item.get("figure_id") or item.get("id") or item.get("candidate_id") or "")
+    if figure_id and figure_id in by_id:
+        return by_id[figure_id]
+
+    label_token = _clean_match_token(item.get("label") or item.get("caption") or item.get("title") or figure_id)
+    if label_token and label_token in by_label:
+        return by_label[label_token]
+    if figure_id:
+        return {}
+
+    try:
+        page_no = int(item.get("page") or 0)
+    except (TypeError, ValueError):
+        page_no = 0
+    page_assets = [asset for asset in by_page.get(page_no, []) if str(asset.get("id") or "") not in used_asset_ids]
+    if len(page_assets) == 1:
+        return page_assets[0]
+    return {}
+
+
+def normalize_figure_insights(value, figure_assets, depth="standard"):
+    by_id, by_page, by_label = _asset_maps(figure_assets)
     insights = []
     used_asset_ids = set()
+    summary_limit = _figure_summary_limit(depth)
     if isinstance(value, list):
-        for index, item in enumerate(value):
+        for item in value:
             if not isinstance(item, dict):
                 continue
             figure_id = item.get("figure_id") or item.get("id") or item.get("candidate_id") or ""
@@ -363,13 +401,11 @@ def normalize_figure_insights(value, figure_assets):
                 page_no = int(item.get("page") or 0)
             except (TypeError, ValueError):
                 page_no = 0
-            asset = by_id.get(str(figure_id)) or {}
-            if not asset and figure_assets and index < len(figure_assets) and isinstance(figure_assets[index], dict):
-                asset = figure_assets[index]
+            asset = _match_figure_asset(item, by_id, by_page, by_label, used_asset_ids)
             if not asset:
-                asset = by_page.get(page_no) or {}
+                continue
             if not figure_id:
-                figure_id = asset.get("id") or f"fig_{index + 1:03d}"
+                figure_id = asset.get("id") or ""
             if not page_no:
                 try:
                     page_no = int(asset.get("page") or 0)
@@ -378,7 +414,7 @@ def normalize_figure_insights(value, figure_assets):
             asset_id = str(asset.get("id") or figure_id)
             if asset_id:
                 used_asset_ids.add(asset_id)
-            summary = _summary_from_item(item, asset)
+            summary = _summary_from_item(item, asset, summary_limit)
             insights.append({
                 "id": str(figure_id),
                 "kind": asset.get("kind") or item.get("kind") or "page_snapshot",
@@ -397,16 +433,16 @@ def normalize_figure_insights(value, figure_assets):
         asset_id = str(asset.get("id") or "")
         if asset_id and asset_id in used_asset_ids:
             continue
-        insights.append(_figure_from_asset(asset))
+        insights.append(_figure_from_asset(asset, summary_limit))
         if asset_id:
             used_asset_ids.add(asset_id)
     if insights:
         max_items = len(figure_assets or []) or len(insights)
         return insights[:max_items]
-    return [_figure_from_asset(asset) for asset in figure_assets or [] if isinstance(asset, dict)]
+    return [_figure_from_asset(asset, summary_limit) for asset in figure_assets or [] if isinstance(asset, dict)]
 
 
-def normalize_speedread_payload(parsed, figure_assets):
+def normalize_speedread_payload(parsed, figure_assets, depth="standard"):
     source = parsed if isinstance(parsed, dict) else {}
     figure_source = source.get("figure_insights")
     if not isinstance(figure_source, list) and isinstance(source.get("core_figures"), list):
@@ -420,6 +456,6 @@ def normalize_speedread_payload(parsed, figure_assets):
         "experiment_read": normalize_experiment_read(source.get("experiment_read")),
         "contributions": list_value(source.get("contributions"), max_items=6),
         "limitations": list_value(source.get("limitations"), max_items=6),
-        "figure_insights": normalize_figure_insights(figure_source, figure_assets),
+        "figure_insights": normalize_figure_insights(figure_source, figure_assets, depth),
         "deep_read_suggestions": list_value(source.get("deep_read_suggestions"), max_items=8),
     }

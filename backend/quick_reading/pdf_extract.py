@@ -262,8 +262,48 @@ def _crop_rendered_page_image(output_path, crop_rect):
         if right - left < image.width * 0.15 or bottom - top < image.height * 0.08:
             return
         cropped = image.crop((left, top, right, bottom))
+        cropped = _trim_white_margins(cropped)
         save_kwargs = {"quality": 92} if output_path.lower().endswith((".jpg", ".jpeg")) else {}
         cropped.save(output_path, **save_kwargs)
+
+
+def _trim_white_margins(image):
+    grayscale = image.convert("L")
+    mask = grayscale.point(lambda pixel: 255 if pixel < 245 else 0)
+    bbox = mask.getbbox()
+    if not bbox:
+        return image
+    left, top, right, bottom = bbox
+    if right - left < image.width * 0.08 or bottom - top < image.height * 0.08:
+        return image
+    pad = max(4, int(max(image.width, image.height) * 0.015))
+    left = max(0, left - pad)
+    top = max(0, top - pad)
+    right = min(image.width, right + pad)
+    bottom = min(image.height, bottom + pad)
+    return image.crop((left, top, right, bottom))
+
+
+def _pdftoppm_crop_args(crop_rect, image_width):
+    if not crop_rect:
+        return []
+    try:
+        page_width = float(crop_rect.get("page_width") or 0)
+        page_height = float(crop_rect.get("page_height") or 0)
+        x0 = float(crop_rect.get("x0"))
+        y0 = float(crop_rect.get("y0"))
+        x1 = float(crop_rect.get("x1"))
+        y1 = float(crop_rect.get("y1"))
+    except (TypeError, ValueError):
+        return []
+    if page_width <= 0 or page_height <= 0 or x1 <= x0 or y1 <= y0:
+        return []
+    scale = float(image_width) / max(page_width, page_height)
+    left = max(0, int(round(x0 * scale)))
+    top = max(0, int(round(y0 * scale)))
+    width = max(1, int(round((x1 - x0) * scale)))
+    height = max(1, int(round((y1 - y0) * scale)))
+    return ["-x", str(left), "-y", str(top), "-W", str(width), "-H", str(height)]
 
 
 def render_page_image(abs_pdf, file_key, page_no, workspace_root, quick_reading_cache_dir, image_width, base_name=None, crop_rect=None):
@@ -275,12 +315,15 @@ def render_page_image(abs_pdf, file_key, page_no, workspace_root, quick_reading_
     target_png = os.path.join(cache_dir, safe_base_name + ".png")
     prefix = os.path.join(cache_dir, safe_base_name)
 
+    crop_args = _pdftoppm_crop_args(crop_rect, image_width)
+    used_native_crop = bool(crop_args)
     cmd = [
         "pdftoppm",
         "-f", str(page_no),
         "-l", str(page_no),
         "-singlefile",
         "-scale-to", str(image_width),
+        *crop_args,
         "-jpeg",
         abs_pdf,
         prefix,
@@ -293,6 +336,7 @@ def render_page_image(abs_pdf, file_key, page_no, workspace_root, quick_reading_
             "-l", str(page_no),
             "-singlefile",
             "-scale-to", str(image_width),
+            *crop_args,
             "-png",
             abs_pdf,
             prefix,
@@ -315,9 +359,11 @@ def render_page_image(abs_pdf, file_key, page_no, workspace_root, quick_reading_
                 if result is not None:
                     detail = clean_page_text(result.stderr or result.stdout, 300)
                 raise RuntimeError(f"渲染第 {page_no} 页失败: {detail or '未知错误'}")
-        _crop_rendered_page_image(target_png, crop_rect)
+        if not used_native_crop:
+            _crop_rendered_page_image(target_png, crop_rect)
         return os.path.relpath(target_png, workspace_root).replace(os.sep, "/")
-    _crop_rendered_page_image(target_jpg, crop_rect)
+    if not used_native_crop:
+        _crop_rendered_page_image(target_jpg, crop_rect)
     return os.path.relpath(target_jpg, workspace_root).replace(os.sep, "/")
 
 

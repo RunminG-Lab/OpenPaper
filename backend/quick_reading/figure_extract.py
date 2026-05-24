@@ -5,10 +5,14 @@ import re
 from backend.utils import log
 
 from .models import clean_page_text
-from .pdf_extract import extract_page_layout_words, render_page_image, select_important_pages
+from .pdf_extract import extract_page_layout_words, render_page_image
 
 CAPTION_RE = re.compile(
-    r"(?im)^\s*((?:Figure|Fig\.?|Table|图|表)\s*[\dIVXLC]+[A-Za-z0-9.\-]*\s*[:：.]?\s*.{0,260})"
+    r"(?im)^\s*((?:Figure|Fig\.?|Table|图|表)\s*[\dIVXLC]+[A-Za-z0-9.\-]*?\s*[:：.]\s*.{0,260})"
+)
+CAPTION_LINE_RE = re.compile(
+    r"^\s*((?:Figure|Fig\.?|Table|图|表)\s*[\dIVXLC]+[A-Za-z0-9.\-]*?\s*[:：.]\s*.{0,260})",
+    re.I,
 )
 
 
@@ -46,6 +50,60 @@ def _caption_number(caption):
     return _clean_label_token(match.group(1)) if match else ""
 
 
+def _split_word_segments(line_words):
+    segments = []
+    current = []
+    previous_x1 = None
+    for item in sorted(line_words, key=lambda word: float(word.get("x0") or 0)):
+        x0 = float(item.get("x0") or 0)
+        if current and previous_x1 is not None and x0 - previous_x1 > 28:
+            segments.append(current)
+            current = []
+        current.append(item)
+        previous_x1 = float(item.get("x1") or x0)
+    if current:
+        segments.append(current)
+    return segments
+
+
+def _caption_column_words(segment, page_width):
+    if not segment or page_width <= 0:
+        return segment
+    x0 = min(float(item.get("x0") or 0) for item in segment)
+    x1 = max(float(item.get("x1") or 0) for item in segment)
+    if x0 < page_width * 0.25 and x1 > page_width * 0.70:
+        return [item for item in segment if float(item.get("x1") or 0) <= page_width * 0.50] or segment
+    if x0 < page_width * 0.30 and x1 > page_width * 0.75:
+        return [item for item in segment if float(item.get("x0") or 0) >= page_width * 0.50] or segment
+    return segment
+
+
+def _line_words_for_anchor(words, anchor_y, anchor_height):
+    tolerance = max(anchor_height * 0.75, 4)
+    return [item for item in words if abs(float(item.get("y0") or 0) - anchor_y) <= tolerance]
+
+
+def _extract_captions_from_layout(layout):
+    words = layout.get("words") or []
+    page_width = float(layout.get("width") or 0)
+    captions = []
+    for word in words:
+        anchor_y = float(word.get("y0") or 0)
+        anchor_height = max(float(word.get("y1") or 0) - anchor_y, 3)
+        for segment in _split_word_segments(_line_words_for_anchor(words, anchor_y, anchor_height)):
+            segment = _caption_column_words(segment, page_width)
+            text = " ".join(str(item.get("text") or "") for item in segment).strip()
+            match = CAPTION_LINE_RE.match(text)
+            if not match:
+                continue
+            caption = clean_page_text(match.group(1), 320)
+            if caption and caption not in captions:
+                captions.append(caption)
+            if len(captions) >= 3:
+                return captions
+    return captions
+
+
 def _find_caption_bbox(layout, caption):
     words = layout.get("words") or []
     if not words:
@@ -65,15 +123,19 @@ def _find_caption_bbox(layout, caption):
                 continue
         anchor_y = float(word.get("y0") or 0)
         anchor_height = max(float(word.get("y1") or 0) - anchor_y, 3)
-        tolerance = max(anchor_height * 0.75, 4)
-        line_words = [item for item in words if abs(float(item.get("y0") or 0) - anchor_y) <= tolerance]
-        if not line_words:
+        line_words = _line_words_for_anchor(words, anchor_y, anchor_height)
+        segment = next((items for items in _split_word_segments(line_words) if word in items), [])
+        if not segment:
+            continue
+        segment = _caption_column_words(segment, float(layout.get("width") or 0))
+        segment_text = " ".join(str(item.get("text") or "") for item in segment).strip()
+        if not CAPTION_LINE_RE.match(segment_text):
             continue
         return {
-            "x0": min(float(item.get("x0") or 0) for item in line_words),
-            "y0": min(float(item.get("y0") or 0) for item in line_words),
-            "x1": max(float(item.get("x1") or 0) for item in line_words),
-            "y1": max(float(item.get("y1") or 0) for item in line_words),
+            "x0": min(float(item.get("x0") or 0) for item in segment),
+            "y0": min(float(item.get("y0") or 0) for item in segment),
+            "x1": max(float(item.get("x1") or 0) for item in segment),
+            "y1": max(float(item.get("y1") or 0) for item in segment),
         }
     return None
 
@@ -83,7 +145,7 @@ def _make_crop_rect(page_width, page_height, x0, y0, x1, y1):
     x1 = max(0, min(page_width, x1))
     y0 = max(0, min(page_height, y0))
     y1 = max(0, min(page_height, y1))
-    if x1 - x0 < page_width * 0.18 or y1 - y0 < page_height * 0.10:
+    if x1 - x0 < page_width * 0.18 or y1 - y0 < page_height * 0.05:
         return None
     return {
         "x0": x0,
@@ -95,8 +157,40 @@ def _make_crop_rect(page_width, page_height, x0, y0, x1, y1):
     }
 
 
+def _line_rows_in_region(words, x0, x1, y_min, y_max):
+    rows = []
+    for word in sorted(words, key=lambda item: float(item.get("y0") or 0)):
+        word_x0 = float(word.get("x0") or 0)
+        word_x1 = float(word.get("x1") or 0)
+        word_y0 = float(word.get("y0") or 0)
+        word_y1 = float(word.get("y1") or 0)
+        word_center = (word_x0 + word_x1) / 2
+        if word_center < x0 or word_center > x1 or word_y1 < y_min or word_y0 > y_max:
+            continue
+        if rows and abs(rows[-1]["y0"] - word_y0) <= 4:
+            rows[-1]["y0"] = min(rows[-1]["y0"], word_y0)
+            rows[-1]["y1"] = max(rows[-1]["y1"], word_y1)
+            continue
+        rows.append({"y0": word_y0, "y1": word_y1})
+    return rows
+
+
+def _table_body_bottom(layout, bbox, x0, x1, page_height):
+    rows = _line_rows_in_region(layout.get("words") or [], x0, x1, bbox["y1"] + 2, page_height * 0.96)
+    if not rows or rows[0]["y0"] - bbox["y1"] > page_height * 0.10:
+        return None
+    last = rows[0]
+    for row in rows[1:]:
+        if row["y0"] - last["y1"] > 18:
+            break
+        last = row
+    return min(page_height * 0.96, last["y1"] + 10)
+
+
 def _crop_rect_for_candidate(pdf_path, page_no, caption, layout_cache):
     if not page_no:
+        return None
+    if not caption:
         return None
     if page_no not in layout_cache:
         layout_cache[page_no] = extract_page_layout_words(pdf_path, page_no)
@@ -106,22 +200,35 @@ def _crop_rect_for_candidate(pdf_path, page_no, caption, layout_cache):
     if page_width <= 0 or page_height <= 0:
         return None
 
-    bbox = _find_caption_bbox(layout, caption) if caption else None
-    x0 = page_width * 0.06
-    x1 = page_width * 0.94
+    bbox = _find_caption_bbox(layout, caption)
     if not bbox:
-        return _make_crop_rect(page_width, page_height, x0, page_height * 0.08, x1, page_height * 0.58)
+        return None
+    is_table = _caption_kind(caption) == "table"
+    is_upper_figure = not is_table and bbox["y0"] < page_height * 0.45
 
-    if _caption_kind(caption) == "table":
-        y0 = max(page_height * 0.04, bbox["y0"] - 8)
-        y1 = min(page_height * 0.96, y0 + page_height * 0.36)
+    if is_upper_figure or bbox["x1"] - bbox["x0"] > page_width * 0.55:
+        x0 = page_width * 0.06
+        x1 = page_width * 0.94
+    elif bbox["x0"] < page_width * 0.50:
+        x0 = page_width * 0.06
+        x1 = page_width * 0.49
+    else:
+        x0 = page_width * 0.51
+        x1 = page_width * 0.94
+
+    if is_table:
+        y0 = min(page_height * 0.96, bbox["y1"] + 18)
+        y1 = _table_body_bottom(layout, bbox, x0, x1, page_height)
+        if not y1:
+            y1 = min(page_height * 0.96, y0 + page_height * 0.42)
     else:
         y1 = bbox["y0"] - 8
         if y1 < page_height * 0.18:
             y0 = min(page_height * 0.18, bbox["y1"] + 6)
             y1 = min(page_height * 0.72, y0 + page_height * 0.42)
         else:
-            y0 = max(page_height * 0.04, y1 - page_height * 0.42)
+            window = 0.34 if is_upper_figure else 0.25
+            y0 = max(page_height * 0.04, y1 - page_height * window)
     return _make_crop_rect(page_width, page_height, x0, y0, x1, y1)
 
 
@@ -164,10 +271,12 @@ class FigureExtractionService:
 
         page_count = len(page_texts or [])
         ranked = []
+        layout_cache = {}
         for page_index in range(page_count):
             page_no = page_index + 1
             text = page_texts[page_index] or ""
-            captions = _extract_captions(text)
+            layout_cache[page_no] = extract_page_layout_words(pdf_path, page_no)
+            captions = _extract_captions_from_layout(layout_cache[page_no]) or _extract_captions(text)
             score = _score_candidate_page(page_no, page_count, text, captions)
             if score <= 0 and not text.strip():
                 continue
@@ -183,16 +292,6 @@ class FigureExtractionService:
                         "excerpt": excerpt,
                         "reason": "图表 caption 候选",
                     })
-            else:
-                ranked.append({
-                    "page": page_no,
-                    "score": score,
-                    "has_caption": False,
-                    "caption": "",
-                    "label": f"Page {page_no}",
-                    "excerpt": excerpt,
-                    "reason": "关键页面候选",
-                })
 
         ranked.sort(key=lambda item: (0 if item.get("has_caption") else 1, -item["score"], item["page"], item.get("label", "")))
         selected = []
@@ -208,39 +307,16 @@ class FigureExtractionService:
             if len(selected) >= requested:
                 break
 
-        if len(selected) < requested:
-            fallback_limit = max(requested * 2, requested + len(selected))
-            for fallback in select_important_pages(page_texts, page_count, fallback_limit):
-                page_no = fallback.get("page")
-                if not page_no or page_no in used_pages:
-                    continue
-                text = page_texts[page_no - 1] if page_no and page_no - 1 < page_count else ""
-                caption = ""
-                captions = _extract_captions(text)
-                if captions:
-                    caption = captions[0]
-                selected.append({
-                    "page": page_no,
-                    "score": 1,
-                    "has_caption": bool(caption),
-                    "caption": caption,
-                    "label": _caption_label(caption, page_no),
-                    "excerpt": fallback.get("excerpt") or clean_page_text(text, 900),
-                    "reason": fallback.get("reason", "补充页面"),
-                })
-                used_pages.add(page_no)
-                if len(selected) >= requested:
-                    break
-
         assets = []
-        layout_cache = {}
         selected_assets = sorted(selected[:requested], key=lambda item: (item.get("page") or 0, item.get("label") or ""))
-        for asset_index, item in enumerate(selected_assets, start=1):
+        for item in selected_assets:
             page_no = int(item.get("page") or 0)
             caption = item.get("caption") or ""
             label = item.get("label") or _caption_label(caption, page_no)
             crop_rect = _crop_rect_for_candidate(pdf_path, page_no, caption, layout_cache)
-            asset_id = f"fig_{asset_index:03d}"
+            if not crop_rect:
+                continue
+            asset_id = f"fig_{len(assets) + 1:03d}"
             image_path = ""
             try:
                 image_path = render_page_image(
@@ -255,11 +331,13 @@ class FigureExtractionService:
                 )
             except Exception as exc:
                 log(f"速读图表页渲染失败 page={page_no}: {exc}")
+            if not image_path:
+                continue
             raw_score = int(item.get("score") or 0)
             confidence = min(0.95, max(0.35, raw_score / 16))
             assets.append({
                 "id": asset_id,
-                "kind": "figure_crop" if crop_rect else "page_snapshot",
+                "kind": "figure_crop",
                 "label": label,
                 "caption": caption or "论文中未明确说明",
                 "page": page_no,

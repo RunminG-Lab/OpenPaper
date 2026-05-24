@@ -48,6 +48,10 @@
         return refs;
     }
 
+    function cleanMatchToken(value) {
+        return String(value || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '');
+    }
+
     function formatSpeedReadTime(isoStr) {
         if (!isoStr) return '时间未知';
         const date = new Date(isoStr);
@@ -184,13 +188,21 @@
     function normalizeFigureInsights(speedRead) {
         const content = speedRead && speedRead.content && typeof speedRead.content === 'object' ? speedRead.content : {};
         const candidates = Array.isArray(speedRead && speedRead.candidate_pages) ? speedRead.candidate_pages : [];
+        const imageVersion = encodeURIComponent((speedRead && (speedRead.updated_at || speedRead.generated_at)) || '');
+        const withImageVersion = path => {
+            if (!path || !imageVersion) return path || '';
+            return `${path}${String(path).includes('?') ? '&' : '?'}v=${imageVersion}`;
+        };
         const byId = new Map();
         const byPage = new Map();
+        const byLabel = new Map();
         candidates.forEach(item => {
             if (!item || typeof item !== 'object') return;
             if (item.id) byId.set(String(item.id), item);
+            const labelToken = cleanMatchToken(item.label || item.caption);
+            if (labelToken) byLabel.set(labelToken, item);
             const page = Number.parseInt(item.page, 10);
-            if (Number.isFinite(page) && !byPage.has(page)) byPage.set(page, item);
+            if (Number.isFinite(page)) byPage.set(page, (byPage.get(page) || []).concat(item));
         });
 
         let raw = Array.isArray(content.figure_insights) ? content.figure_insights : null;
@@ -198,22 +210,36 @@
         if (!raw) raw = [];
 
         const usedCandidateIds = new Set();
-        const normalized = raw.map((item, index) => {
+        const matchAsset = item => {
+            const rawId = item.figure_id || item.id || item.candidate_id || '';
+            if (rawId && byId.has(String(rawId))) return byId.get(String(rawId));
+            const labelToken = cleanMatchToken(item.label || item.caption || item.title || rawId);
+            if (labelToken && byLabel.has(labelToken)) return byLabel.get(labelToken);
+            if (rawId) return {};
+            const page = Number.parseInt(item.page, 10);
+            const pageAssets = Number.isFinite(page)
+                ? (byPage.get(page) || []).filter(asset => !asset.id || !usedCandidateIds.has(String(asset.id)))
+                : [];
+            return pageAssets.length === 1 ? pageAssets[0] : {};
+        };
+
+        const normalized = raw.map(item => {
             if (!item || typeof item !== 'object') return null;
             const rawId = item.figure_id || item.id || item.candidate_id || '';
             const page = Number.parseInt(item.page, 10);
-            const asset = byId.get(String(rawId)) || candidates[index] || byPage.get(page) || {};
+            const asset = matchAsset(item);
+            if (!asset || !Object.keys(asset).length) return null;
             const resolvedPage = Number.isFinite(page) ? page : Number.parseInt(asset.page, 10);
             const assetId = asset.id ? String(asset.id) : '';
             if (assetId) usedCandidateIds.add(assetId);
             const summary = compactFigureSummary(item, asset);
             return {
-                id: String(rawId || asset.id || `fig_${String(index + 1).padStart(3, '0')}`),
+                id: String(rawId || asset.id || ''),
                 kind: asset.kind || item.kind || 'page_snapshot',
                 label: textValue(item.label || asset.label, asset.label || '关键页面'),
                 caption: textValue(item.caption || asset.caption, asset.caption || MISSING_TEXT),
                 page: Number.isFinite(resolvedPage) ? resolvedPage : '',
-                image_path: asset.image_path || item.image_path || '',
+                image_path: withImageVersion(asset.image_path || item.image_path || ''),
                 confidence: asset.confidence || item.confidence || '',
                 title: textValue(item.title || item.what_it_shows || asset.reason, '关键图表页'),
                 summary,
@@ -229,7 +255,7 @@
             label: asset.label || '关键页面',
             caption: asset.caption || MISSING_TEXT,
             page: asset.page || '',
-            image_path: asset.image_path || '',
+            image_path: withImageVersion(asset.image_path || ''),
             confidence: asset.confidence || '',
             title: asset.reason || asset.label || '关键图表页',
             summary: cleanFigureSummary(asset.caption || asset.excerpt, MISSING_TEXT),

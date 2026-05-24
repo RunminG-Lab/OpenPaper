@@ -134,7 +134,7 @@ def generate_speedread(
         parsed, request_mode, endpoint = client.request_json(prompt, figure_assets, max_tokens=max_tokens)
 
         write_progress("normalize", "正在整理模型输出和图表解释", 88, {"token_status": token_status})
-        normalized = normalize_speedread_payload(parsed, figure_assets)
+        normalized = normalize_speedread_payload(parsed, figure_assets, generation_options.get("depth"))
         success_state = {
             "version": 2,
             "status": "success",
