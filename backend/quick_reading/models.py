@@ -11,6 +11,9 @@ ALLOWED_DEPTHS = {"brief", "standard", "deep"}
 ALLOWED_METHOD_ROLES = {"proposed", "baseline", "ablation", "variant", "other"}
 ALLOWED_DIFFICULTIES = {"low", "medium", "high", "unknown"}
 DEFAULT_FOCUS = ["general", "experiment", "reproduction", "figure"]
+LEGACY_FIGURE_LABEL_RE = re.compile(
+    r"^\s*(展示什么|看什么|先看哪里|视觉元素|支撑结论|它说明了什么|为什么重要|方法/实验关系|容易误读)\s*[:：]\s*"
+)
 
 
 def now_iso() -> str:
@@ -33,6 +36,19 @@ def text_value(value, fallback=MISSING_TEXT, limit=None):
         return fallback
     cleaned = clean_page_text(value, limit)
     return cleaned or fallback
+
+
+def clean_figure_summary(value, fallback=MISSING_TEXT, limit=None):
+    text = text_value(value, "", limit)
+    if not text:
+        return fallback
+    kept = []
+    for line in re.split(r"\n+", text):
+        cleaned = LEGACY_FIGURE_LABEL_RE.sub("", line).strip()
+        if not cleaned or cleaned == MISSING_TEXT:
+            continue
+        kept.append(cleaned)
+    return clean_page_text(" ".join(kept), limit) or fallback
 
 
 def list_value(value, fallback_text=MISSING_TEXT, max_items=8):
@@ -278,7 +294,48 @@ def _asset_maps(figure_assets):
     return by_id, by_page
 
 
+def _compact_figure_summary(*values):
+    parts = []
+    for value in values:
+        text = clean_figure_summary(value, "", 420)
+        if text and text != MISSING_TEXT and text not in parts:
+            parts.append(text)
+    return " ".join(parts) if parts else MISSING_TEXT
+
+
+def _summary_from_asset(asset):
+    caption = clean_figure_summary(asset.get("caption"), "", 520)
+    if caption and caption != MISSING_TEXT:
+        return caption
+    excerpt = text_value(asset.get("excerpt"), "", 520)
+    if excerpt:
+        page = asset.get("page") or "?"
+        return f"这张候选图表来自第 {page} 页，正文附近说明：{excerpt}"
+    return MISSING_TEXT
+
+
+def _summary_from_item(item, asset):
+    direct = clean_figure_summary(
+        item.get("summary") or item.get("interpretation") or item.get("analysis") or item.get("description"),
+        "",
+        900,
+    )
+    if direct:
+        return direct
+    summary = _compact_figure_summary(
+        item.get("what_it_shows") or item.get("what_to_look"),
+        item.get("how_to_read"),
+        item.get("supports_claim") or item.get("what_it_proves"),
+        item.get("relation_to_method_or_experiment") or item.get("why_important"),
+        item.get("misread_risks"),
+    )
+    if summary != MISSING_TEXT:
+        return summary
+    return _summary_from_asset(asset) if isinstance(asset, dict) else MISSING_TEXT
+
+
 def _figure_from_asset(asset):
+    summary = _summary_from_asset(asset)
     return {
         "id": asset.get("id", ""),
         "kind": asset.get("kind", "page_snapshot"),
@@ -288,12 +345,7 @@ def _figure_from_asset(asset):
         "image_path": asset.get("image_path", ""),
         "confidence": asset.get("confidence", 0),
         "title": asset.get("label") or asset.get("reason") or "关键图表页",
-        "what_it_shows": asset.get("caption") or asset.get("excerpt") or MISSING_TEXT,
-        "how_to_read": "优先查看图题/表题、图注和正文中引用该图表的段落，再看坐标轴、模块箭头或表格列。",
-        "visual_elements": MISSING_TEXT,
-        "supports_claim": MISSING_TEXT,
-        "relation_to_method_or_experiment": MISSING_TEXT,
-        "misread_risks": MISSING_TEXT,
+        "summary": summary,
         "page_refs": normalize_page_refs([asset.get("page")]),
     }
 
@@ -301,6 +353,7 @@ def _figure_from_asset(asset):
 def normalize_figure_insights(value, figure_assets):
     by_id, by_page = _asset_maps(figure_assets)
     insights = []
+    used_asset_ids = set()
     if isinstance(value, list):
         for index, item in enumerate(value):
             if not isinstance(item, dict):
@@ -310,7 +363,11 @@ def normalize_figure_insights(value, figure_assets):
                 page_no = int(item.get("page") or 0)
             except (TypeError, ValueError):
                 page_no = 0
-            asset = by_id.get(str(figure_id)) or by_page.get(page_no) or {}
+            asset = by_id.get(str(figure_id)) or {}
+            if not asset and figure_assets and index < len(figure_assets) and isinstance(figure_assets[index], dict):
+                asset = figure_assets[index]
+            if not asset:
+                asset = by_page.get(page_no) or {}
             if not figure_id:
                 figure_id = asset.get("id") or f"fig_{index + 1:03d}"
             if not page_no:
@@ -318,6 +375,10 @@ def normalize_figure_insights(value, figure_assets):
                     page_no = int(asset.get("page") or 0)
                 except (TypeError, ValueError):
                     page_no = 0
+            asset_id = str(asset.get("id") or figure_id)
+            if asset_id:
+                used_asset_ids.add(asset_id)
+            summary = _summary_from_item(item, asset)
             insights.append({
                 "id": str(figure_id),
                 "kind": asset.get("kind") or item.get("kind") or "page_snapshot",
@@ -327,16 +388,21 @@ def normalize_figure_insights(value, figure_assets):
                 "image_path": asset.get("image_path") or item.get("image_path") or "",
                 "confidence": asset.get("confidence", item.get("confidence", 0)),
                 "title": text_value(item.get("title") or item.get("what_it_shows") or asset.get("reason"), "关键图表页"),
-                "what_it_shows": text_value(item.get("what_it_shows") or item.get("summary") or item.get("what_to_look")),
-                "how_to_read": text_value(item.get("how_to_read") or item.get("what_to_look")),
-                "visual_elements": text_value(item.get("visual_elements")),
-                "supports_claim": text_value(item.get("supports_claim") or item.get("what_it_proves")),
-                "relation_to_method_or_experiment": text_value(item.get("relation_to_method_or_experiment") or item.get("why_important")),
-                "misread_risks": text_value(item.get("misread_risks")),
+                "summary": summary,
                 "page_refs": normalize_page_refs(item.get("page_refs") or [page_no or asset.get("page")]),
             })
+    for asset in figure_assets or []:
+        if not isinstance(asset, dict):
+            continue
+        asset_id = str(asset.get("id") or "")
+        if asset_id and asset_id in used_asset_ids:
+            continue
+        insights.append(_figure_from_asset(asset))
+        if asset_id:
+            used_asset_ids.add(asset_id)
     if insights:
-        return insights
+        max_items = len(figure_assets or []) or len(insights)
+        return insights[:max_items]
     return [_figure_from_asset(asset) for asset in figure_assets or [] if isinstance(asset, dict)]
 
 

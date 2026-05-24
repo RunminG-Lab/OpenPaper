@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import os
 import re
 import subprocess
@@ -15,6 +16,18 @@ try:
     import fitz
 except ImportError:
     fitz = None
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+
+PAGE_SIZE_RE = re.compile(r"<page\b[^>]*\bwidth=\"([0-9.]+)\"[^>]*\bheight=\"([0-9.]+)\"", re.I)
+WORD_BOX_RE = re.compile(
+    r"<word\b[^>]*\bxMin=\"([0-9.]+)\"[^>]*\byMin=\"([0-9.]+)\""
+    r"[^>]*\bxMax=\"([0-9.]+)\"[^>]*\byMax=\"([0-9.]+)\"[^>]*>(.*?)</word>",
+    re.I | re.S,
+)
 
 
 def resolve_pdf_entry(file_key, metadata, workspace_root):
@@ -82,9 +95,51 @@ def extract_pdf_pages_text(abs_pdf, page_count):
             doc.close()
     while pages and not pages[-1]:
         pages.pop()
+    if page_count and len(pages) > page_count:
+        pages = pages[:page_count]
     if page_count and len(pages) < page_count:
         pages.extend([""] * (page_count - len(pages)))
     return pages
+
+
+def extract_page_layout_words(abs_pdf, page_no):
+    result = run_capture([
+        "pdftotext",
+        "-bbox-layout",
+        "-enc", "UTF-8",
+        "-f", str(page_no),
+        "-l", str(page_no),
+        abs_pdf,
+        "-",
+    ])
+    if result is None or result.returncode != 0:
+        return {"width": 0, "height": 0, "words": []}
+
+    raw = result.stdout or ""
+    page_match = PAGE_SIZE_RE.search(raw)
+    try:
+        page_width = float(page_match.group(1)) if page_match else 0
+        page_height = float(page_match.group(2)) if page_match else 0
+    except (TypeError, ValueError):
+        page_width = 0
+        page_height = 0
+
+    words = []
+    for match in WORD_BOX_RE.finditer(raw):
+        word_text = html.unescape(re.sub(r"<[^>]+>", "", match.group(5))).strip()
+        if not word_text:
+            continue
+        try:
+            words.append({
+                "text": word_text,
+                "x0": float(match.group(1)),
+                "y0": float(match.group(2)),
+                "x1": float(match.group(3)),
+                "y1": float(match.group(4)),
+            })
+        except (TypeError, ValueError):
+            continue
+    return {"width": page_width, "height": page_height, "words": words}
 
 
 def score_page_for_keywords(page_no, page_count, text, keywords):
@@ -182,7 +237,36 @@ def select_important_pages(page_texts, page_count, max_pages):
     return picked[:max_pages]
 
 
-def render_page_image(abs_pdf, file_key, page_no, workspace_root, quick_reading_cache_dir, image_width, base_name=None):
+def _crop_rendered_page_image(output_path, crop_rect):
+    if Image is None or not crop_rect or not os.path.exists(output_path):
+        return
+    try:
+        page_width = float(crop_rect.get("page_width") or 0)
+        page_height = float(crop_rect.get("page_height") or 0)
+        x0 = float(crop_rect.get("x0"))
+        y0 = float(crop_rect.get("y0"))
+        x1 = float(crop_rect.get("x1"))
+        y1 = float(crop_rect.get("y1"))
+    except (TypeError, ValueError):
+        return
+    if page_width <= 0 or page_height <= 0 or x1 <= x0 or y1 <= y0:
+        return
+
+    with Image.open(output_path) as image:
+        scale_x = image.width / page_width
+        scale_y = image.height / page_height
+        left = max(0, min(image.width - 1, int(round(x0 * scale_x))))
+        top = max(0, min(image.height - 1, int(round(y0 * scale_y))))
+        right = max(left + 1, min(image.width, int(round(x1 * scale_x))))
+        bottom = max(top + 1, min(image.height, int(round(y1 * scale_y))))
+        if right - left < image.width * 0.15 or bottom - top < image.height * 0.08:
+            return
+        cropped = image.crop((left, top, right, bottom))
+        save_kwargs = {"quality": 92} if output_path.lower().endswith((".jpg", ".jpeg")) else {}
+        cropped.save(output_path, **save_kwargs)
+
+
+def render_page_image(abs_pdf, file_key, page_no, workspace_root, quick_reading_cache_dir, image_width, base_name=None, crop_rect=None):
     cache_dir = paper_cache_dir(file_key, workspace_root, quick_reading_cache_dir)
     os.makedirs(cache_dir, exist_ok=True)
 
@@ -231,7 +315,9 @@ def render_page_image(abs_pdf, file_key, page_no, workspace_root, quick_reading_
                 if result is not None:
                     detail = clean_page_text(result.stderr or result.stdout, 300)
                 raise RuntimeError(f"渲染第 {page_no} 页失败: {detail or '未知错误'}")
+        _crop_rendered_page_image(target_png, crop_rect)
         return os.path.relpath(target_png, workspace_root).replace(os.sep, "/")
+    _crop_rendered_page_image(target_jpg, crop_rect)
     return os.path.relpath(target_jpg, workspace_root).replace(os.sep, "/")
 
 

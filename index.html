@@ -2099,8 +2099,20 @@ function renderSpeedReadModal(paper) {
     const experimentReadText = typeof content.experiment_read === 'string'
         ? content.experiment_read
         : ((content.experiment_read && content.experiment_read.summary) || '论文中未明确说明');
+    const cleanFigureSummaryText = value => String(value || '')
+        .split(/\n+/)
+        .map(line => line.replace(/^\s*(展示什么|看什么|先看哪里|视觉元素|支撑结论|它说明了什么|为什么重要|方法\/实验关系|容易误读)\s*[:：]\s*/, '').trim())
+        .filter(line => line && line !== '论文中未明确说明')
+        .join(' ');
     const figureCardsHtml = coreFigures.length
         ? `<div class="speedread-figure-grid">${coreFigures.map(item => {
+            const summaryParts = [
+                item.summary,
+                item.what_to_look || item.how_to_read || item.what_it_shows,
+                item.what_it_proves || item.supports_claim,
+                item.why_important || item.relation_to_method_or_experiment,
+            ].map(cleanFigureSummaryText).filter(Boolean);
+            const figureSummary = summaryParts.length ? [...new Set(summaryParts)].join(' ') : (item.caption || '论文中未明确说明');
             const imageHtml = item.image_path
                 ? `<img src="${escapeHtml(item.image_path)}" alt="page ${escapeHtml(String(item.page || ''))}">`
                 : '<div class="speedread-figure-placeholder">无页面截图</div>';
@@ -2110,9 +2122,7 @@ function renderSpeedReadModal(paper) {
                     <div class="speedread-figure-body">
                         <span class="speedread-chip">Page ${escapeHtml(String(item.page || '?'))}${item.reason ? ` · ${escapeHtml(item.reason)}` : ''}</span>
                         <h4>${renderTextBlock(item.title || '关键图表')}</h4>
-                        <div class="speedread-figure-note"><strong>看什么：</strong>${renderTextBlock(item.what_to_look || item.how_to_read || item.what_it_shows)}</div>
-                        <div class="speedread-figure-note"><strong>它说明了什么：</strong>${renderTextBlock(item.what_it_proves || item.supports_claim)}</div>
-                        <div class="speedread-figure-note"><strong>为什么重要：</strong>${renderTextBlock(item.why_important || item.relation_to_method_or_experiment)}</div>
+                        <div class="speedread-figure-note">${renderTextBlock(figureSummary)}</div>
                     </div>
                 </article>
             `;

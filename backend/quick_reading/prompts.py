@@ -14,7 +14,12 @@ def _depth_instruction(depth):
 def build_speedread_prompt(paper_meta, grounding_text, candidate_pages, options):
     depth = options.get("depth", "standard")
     focus = ", ".join(options.get("focus") or [])
-    figure_instruction = "需要生成 figure_insights。" if options.get("include_figure_insights") else "不要生成图表解读，figure_insights 返回空数组。"
+    candidate_count = len(candidate_pages or [])
+    figure_instruction = (
+        f"需要生成 figure_insights，尽量覆盖全部候选图表（当前 {candidate_count} 个），每个候选只写一段 summary。"
+        if options.get("include_figure_insights")
+        else "不要生成图表解读，figure_insights 返回空数组。"
+    )
     candidate_text = "\n".join(
         f"- id {item.get('id')}; page {item.get('page')}; label {item.get('label')}; "
         f"kind {item.get('kind')}; reason {item.get('reason')}\n"
@@ -33,6 +38,7 @@ def build_speedread_prompt(paper_meta, grounding_text, candidate_pages, options)
         "4. 不要夸奖论文，不要写营销式语言，不要把摘要机械翻译成中文。\n"
         "5. 用户特别关注实验，因此 experiment_read 必须细，不能压缩成一两句话。\n"
         "6. 仅输出一个合法 JSON 对象，不要输出 Markdown 代码块或额外解释。\n\n"
+        "7. figure_insights 只能用一段 summary 解释图表，不要拆成“展示什么/先看哪里/视觉元素/支撑结论”等小标题。\n\n"
         f"速读深度：{depth}。{_depth_instruction(depth)}\n"
         f"关注方向：{focus or 'general, experiment, reproduction, figure'}。\n"
         f"图表要求：{figure_instruction}\n\n"
@@ -66,12 +72,7 @@ def build_speedread_prompt(paper_meta, grounding_text, candidate_pages, options)
         "  \"figure_insights\": [\n"
         "    {\n"
         "      \"figure_id\": \"fig_001\", \"page\": 8, \"label\": \"Figure 2\", \"title\": \"中文标题\",\n"
-        "      \"what_it_shows\": \"这张图/表展示什么\",\n"
-        "      \"how_to_read\": \"应该先看哪里\",\n"
-        "      \"visual_elements\": \"横纵轴、颜色、箭头、模块或表格列的含义\",\n"
-        "      \"supports_claim\": \"支撑论文哪个结论\",\n"
-        "      \"relation_to_method_or_experiment\": \"它和方法/实验/贡献的关系\",\n"
-        "      \"misread_risks\": \"容易误读的地方\",\n"
+        "      \"summary\": \"用 2-4 句直接解释这张图/表：图里是什么、应该怎么读、它支撑论文哪部分结论。不要使用固定小标题。\",\n"
         "      \"page_refs\": [8]\n"
         "    }\n"
         "  ],\n"
@@ -82,7 +83,7 @@ def build_speedread_prompt(paper_meta, grounding_text, candidate_pages, options)
         f"作者：{paper_meta.get('authors', '')}\n"
         f"年份：{paper_meta.get('year', '')}\n"
         f"会议/期刊：{paper_meta.get('venue', '')}\n\n"
-        "候选图表/页面截图（figure_insights 中如引用图片，必须优先引用这些 id/page）：\n"
+        "候选图表/裁剪截图（figure_insights 中如引用图片，必须优先引用这些 id/page）：\n"
         f"{candidate_text}\n\n"
         "论文文本片段：\n"
         f"{grounding_text}"

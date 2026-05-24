@@ -16,6 +16,18 @@
         return cleaned || fallback;
     }
 
+    function cleanFigureSummary(value, fallback = MISSING_TEXT) {
+        const raw = textValue(value, '');
+        if (!raw) return fallback;
+        const lines = raw.split(/\n+/).map(line => {
+            const cleaned = line
+                .replace(/^\s*(展示什么|看什么|先看哪里|视觉元素|支撑结论|它说明了什么|为什么重要|方法\/实验关系|容易误读)\s*[:：]\s*/, '')
+                .trim();
+            return cleaned && cleaned !== MISSING_TEXT ? cleaned : '';
+        }).filter(Boolean);
+        return lines.join(' ') || fallback;
+    }
+
     function listValue(value, fallback = MISSING_TEXT) {
         if (!Array.isArray(value)) return [fallback];
         const items = value.map(item => {
@@ -155,6 +167,20 @@
         };
     }
 
+    function compactFigureSummary(item = {}, asset = {}) {
+        const direct = cleanFigureSummary(item.summary || item.interpretation || item.analysis || item.description, '');
+        if (direct) return direct;
+        const parts = [
+            item.what_it_shows || item.what_to_look,
+            item.how_to_read,
+            item.supports_claim || item.what_it_proves,
+            item.relation_to_method_or_experiment || item.why_important,
+            item.misread_risks,
+        ].map(value => cleanFigureSummary(value, '')).filter(Boolean);
+        if (parts.length) return [...new Set(parts)].join(' ');
+        return cleanFigureSummary(asset.caption || asset.excerpt, MISSING_TEXT);
+    }
+
     function normalizeFigureInsights(speedRead) {
         const content = speedRead && speedRead.content && typeof speedRead.content === 'object' ? speedRead.content : {};
         const candidates = Array.isArray(speedRead && speedRead.candidate_pages) ? speedRead.candidate_pages : [];
@@ -171,12 +197,16 @@
         if (!raw && Array.isArray(content.core_figures)) raw = content.core_figures;
         if (!raw) raw = [];
 
+        const usedCandidateIds = new Set();
         const normalized = raw.map((item, index) => {
             if (!item || typeof item !== 'object') return null;
             const rawId = item.figure_id || item.id || item.candidate_id || '';
             const page = Number.parseInt(item.page, 10);
-            const asset = byId.get(String(rawId)) || byPage.get(page) || {};
+            const asset = byId.get(String(rawId)) || candidates[index] || byPage.get(page) || {};
             const resolvedPage = Number.isFinite(page) ? page : Number.parseInt(asset.page, 10);
+            const assetId = asset.id ? String(asset.id) : '';
+            if (assetId) usedCandidateIds.add(assetId);
+            const summary = compactFigureSummary(item, asset);
             return {
                 id: String(rawId || asset.id || `fig_${String(index + 1).padStart(3, '0')}`),
                 kind: asset.kind || item.kind || 'page_snapshot',
@@ -186,18 +216,14 @@
                 image_path: asset.image_path || item.image_path || '',
                 confidence: asset.confidence || item.confidence || '',
                 title: textValue(item.title || item.what_it_shows || asset.reason, '关键图表页'),
-                what_it_shows: textValue(item.what_it_shows || item.what_to_look || item.summary),
-                how_to_read: textValue(item.how_to_read || item.what_to_look),
-                visual_elements: textValue(item.visual_elements),
-                supports_claim: textValue(item.supports_claim || item.what_it_proves),
-                relation_to_method_or_experiment: textValue(item.relation_to_method_or_experiment || item.why_important),
-                misread_risks: textValue(item.misread_risks),
+                summary,
                 page_refs: pageRefs(item.page_refs || [resolvedPage]),
             };
         }).filter(Boolean);
 
-        if (normalized.length) return normalized;
-        return candidates.map((asset, index) => ({
+        const fallbackItems = candidates
+            .filter(asset => !asset.id || !usedCandidateIds.has(String(asset.id)))
+            .map((asset, index) => ({
             id: String(asset.id || `fig_${String(index + 1).padStart(3, '0')}`),
             kind: asset.kind || 'page_snapshot',
             label: asset.label || '关键页面',
@@ -206,14 +232,11 @@
             image_path: asset.image_path || '',
             confidence: asset.confidence || '',
             title: asset.reason || asset.label || '关键图表页',
-            what_it_shows: asset.excerpt || asset.caption || MISSING_TEXT,
-            how_to_read: '优先查看图题/表题、图注和正文引用该图表的段落。',
-            visual_elements: MISSING_TEXT,
-            supports_claim: MISSING_TEXT,
-            relation_to_method_or_experiment: MISSING_TEXT,
-            misread_risks: MISSING_TEXT,
+            summary: cleanFigureSummary(asset.caption || asset.excerpt, MISSING_TEXT),
             page_refs: pageRefs([asset.page]),
         }));
+        const merged = normalized.concat(fallbackItems);
+        return candidates.length ? merged.slice(0, candidates.length) : merged;
     }
 
     function normalizeSpeedReadContent(speedRead) {
@@ -292,12 +315,7 @@
                     <div class="qr-figure-body">
                         <div class="qr-chip">${escapeHtml(item.label || '关键页面')} · Page ${escapeHtml(String(item.page || '?'))}${confidence}</div>
                         <h3>${renderTextBlock(item.title)}</h3>
-                        <p><b>展示什么：</b>${renderTextBlock(item.what_it_shows)}</p>
-                        <p><b>先看哪里：</b>${renderTextBlock(item.how_to_read)}</p>
-                        <p><b>视觉元素：</b>${renderTextBlock(item.visual_elements)}</p>
-                        <p><b>支撑结论：</b>${renderTextBlock(item.supports_claim)}</p>
-                        <p><b>方法/实验关系：</b>${renderTextBlock(item.relation_to_method_or_experiment)}</p>
-                        <p><b>容易误读：</b>${renderTextBlock(item.misread_risks)}</p>
+                        <p class="qr-figure-summary">${renderTextBlock(item.summary || item.what_it_shows || item.caption)}</p>
                     </div>
                 </article>
             `;
