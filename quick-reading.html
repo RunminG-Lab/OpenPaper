@@ -51,6 +51,7 @@ button:disabled { opacity: 0.65; cursor: wait; }
 h1 { margin: 0 0 8px; color: var(--strong); font-size: clamp(1.5rem, 2.5vw, 2.2rem); line-height: 1.25; letter-spacing: 0; }
 .meta-line { color: var(--muted); font-size: 0.94rem; line-height: 1.65; }
 .top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.top-actions .exporting { min-width: 88px; }
 .content { max-width: 1180px; padding: 20px 24px 48px; }
 .section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 16px; }
 .section h2 { margin: 0 0 12px; color: var(--strong); font-size: 1.12rem; letter-spacing: 0; }
@@ -134,6 +135,8 @@ h1 { margin: 0 0 8px; color: var(--strong); font-size: clamp(1.5rem, 2.5vw, 2.2r
             </div>
             <div class="top-actions">
                 <button id="open-pdf-btn" type="button">打开 PDF</button>
+                <button id="export-pdf-btn" type="button">导出 PDF</button>
+                <button id="export-pptx-btn" type="button">导出 PPTX</button>
                 <button id="regenerate-btn" type="button" class="primary">生成速读</button>
             </div>
         </header>
@@ -212,6 +215,8 @@ const contentEl = document.getElementById('content');
 const titleEl = document.getElementById('paper-title');
 const metaEl = document.getElementById('paper-meta');
 const openPdfBtn = document.getElementById('open-pdf-btn');
+const exportPdfBtn = document.getElementById('export-pdf-btn');
+const exportPptxBtn = document.getElementById('export-pptx-btn');
 const regenerateBtn = document.getElementById('regenerate-btn');
 const generateModal = document.getElementById('speedread-generate-modal');
 const generateDepth = document.getElementById('generate-depth');
@@ -348,6 +353,68 @@ function renderHeader() {
     metaEl.textContent = metaParts.join(' · ') || '未生成速读';
     regenerateBtn.textContent = speedRead.status === 'success' ? '重新生成' : '生成速读';
     openPdfBtn.disabled = !(paper.pdf_local || paper.pdf);
+    const canExport = !!(speedRead && speedRead.status === 'success' && speedRead.content);
+    exportPdfBtn.disabled = !canExport;
+    exportPptxBtn.disabled = !canExport;
+}
+
+function filenameFromDisposition(disposition, fallback) {
+    const header = disposition || '';
+    const utfMatch = /filename\*=UTF-8''([^;]+)/i.exec(header);
+    if (utfMatch) {
+        try { return decodeURIComponent(utfMatch[1].replace(/"/g, '').trim()); } catch (_) {}
+    }
+    const plainMatch = /filename="?([^";]+)"?/i.exec(header);
+    return plainMatch ? plainMatch[1].trim() : fallback;
+}
+
+function triggerBlobDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+}
+
+async function readErrorMessage(response) {
+    const text = await response.text().catch(() => '');
+    if (!text) return `HTTP ${response.status}`;
+    try {
+        const data = JSON.parse(text);
+        return data.error || text;
+    } catch (_) {
+        return text;
+    }
+}
+
+function setExportBusy(format, busy) {
+    const canExport = !!(state.speedRead && state.speedRead.status === 'success' && state.speedRead.content);
+    exportPdfBtn.disabled = busy || !canExport;
+    exportPptxBtn.disabled = busy || !canExport;
+    exportPdfBtn.textContent = busy && format === 'pdf' ? 'PDF 导出中...' : '导出 PDF';
+    exportPptxBtn.textContent = busy && format === 'pptx' ? 'PPTX 导出中...' : '导出 PPTX';
+    exportPdfBtn.classList.toggle('exporting', busy && format === 'pdf');
+    exportPptxBtn.classList.toggle('exporting', busy && format === 'pptx');
+}
+
+async function exportSpeedRead(format) {
+    if (!(state.speedRead && state.speedRead.status === 'success' && state.speedRead.content)) return;
+    setExportBusy(format, true);
+    try {
+        const response = await fetch(`/api/quick-reading/export?file_key=${encodeURIComponent(fileKey)}&format=${encodeURIComponent(format)}`, { cache: 'no-store' });
+        if (!response.ok) throw new Error(await readErrorMessage(response));
+        const blob = await response.blob();
+        const filename = filenameFromDisposition(response.headers.get('Content-Disposition'), `speed_read.${format}`);
+        triggerBlobDownload(blob, filename);
+    } catch (err) {
+        alert('导出失败：' + (err && err.message ? err.message : String(err)));
+    } finally {
+        setExportBusy(format, false);
+    }
 }
 
 function renderProgress(speedRead) {
@@ -538,6 +605,8 @@ openPdfBtn.addEventListener('click', () => {
     const target = paper.pdf_local || paper.pdf;
     if (target) window.open(target, '_blank');
 });
+exportPdfBtn.addEventListener('click', () => exportSpeedRead('pdf'));
+exportPptxBtn.addEventListener('click', () => exportSpeedRead('pptx'));
 regenerateBtn.addEventListener('click', () => openSpeedReadGenerateDialog(fileKey));
 document.getElementById('generate-close').addEventListener('click', closeSpeedReadGenerateDialog);
 document.getElementById('generate-cancel').addEventListener('click', closeSpeedReadGenerateDialog);

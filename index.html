@@ -158,9 +158,16 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 .paper .actions .btn-speedread.has-speedread { background:var(--accent-color); color:#fff; border-color:var(--accent-color); }
 .paper .actions .btn-speedread.has-speedread:hover { background:var(--accent-color-hover); }
 .paper .actions .btn-speedread[disabled] { opacity:0.72; cursor:wait; }
+.speedread-export-wrap { position:relative; display:inline-flex; }
+.speedread-export-panel { display:none; position:absolute; left:0; top:calc(100% + 4px); z-index:80; min-width:132px; padding:6px; border:1px solid var(--surface-border); border-radius:8px; background:var(--surface-bg); box-shadow:0 10px 26px rgba(15,23,42,0.16); }
+.speedread-export-panel.open { display:block; }
+.speedread-export-panel button { display:block; width:100%; text-align:left; margin:0; border:none; background:transparent; color:var(--surface-text-color); padding:7px 9px; }
+.speedread-export-panel button:hover { background:var(--surface-muted-bg); }
 .speedread-modal { max-width:1120px; }
 .speedread-head-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
-.speedread-head-actions #speedread-delete[hidden] { display:none !important; }
+.speedread-head-actions #speedread-delete[hidden],
+.speedread-head-actions #speedread-export-pdf[hidden],
+.speedread-head-actions #speedread-export-pptx[hidden] { display:none !important; }
 .speedread-head-actions .btn-danger-soft { color:#b91c1c; border-color:#fecaca; background:#fff5f5; }
 .speedread-head-actions .btn-danger-soft:hover { background:#fee2e2; }
 .speedread-meta { padding:10px 18px 12px; border-bottom:1px solid var(--surface-border); background:var(--surface-muted-bg); color:#64748b; font-size:0.86em; line-height:1.6; }
@@ -495,6 +502,8 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
         <div class="modal-head">
             <h2 id="speedread-modal-title">⚡ 论文速读</h2>
             <div class="speedread-head-actions">
+                <button type="button" id="speedread-export-pdf" hidden>导出 PDF</button>
+                <button type="button" id="speedread-export-pptx" hidden>导出 PPTX</button>
                 <button type="button" id="speedread-delete" class="btn-danger-soft" hidden>🗑️ 删除速读</button>
                 <button type="button" id="speedread-regenerate">🔁 重新生成</button>
                 <button type="button" class="modal-close" id="speedread-close" title="关闭">✕</button>
@@ -589,6 +598,8 @@ const speedReadMeta = document.getElementById('speedread-meta');
 const speedReadBody = document.getElementById('speedread-body');
 const speedReadCloseBtn = document.getElementById('speedread-close');
 const speedReadDeleteBtn = document.getElementById('speedread-delete');
+const speedReadExportPdfBtn = document.getElementById('speedread-export-pdf');
+const speedReadExportPptxBtn = document.getElementById('speedread-export-pptx');
 const speedReadRegenerateBtn = document.getElementById('speedread-regenerate');
 const speedReadGenerateModal = document.getElementById('speedread-generate-modal');
 const speedReadGenerateTitle = document.getElementById('speedread-generate-title');
@@ -1329,6 +1340,108 @@ function triggerExportDownload(payload, filename, mimeType) {
     URL.revokeObjectURL(url);
 }
 
+function filenameFromDisposition(disposition, fallback) {
+    const header = disposition || '';
+    const utfMatch = /filename\*=UTF-8''([^;]+)/i.exec(header);
+    if (utfMatch) {
+        try { return decodeURIComponent(utfMatch[1].replace(/"/g, '').trim()); } catch (_) {}
+    }
+    const plainMatch = /filename="?([^";]+)"?/i.exec(header);
+    return plainMatch ? plainMatch[1].trim() : fallback;
+}
+
+function triggerBlobDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+}
+
+async function readResponseError(response) {
+    const text = await response.text().catch(() => '');
+    if (!text) return `HTTP ${response.status}`;
+    try {
+        const data = JSON.parse(text);
+        return data.error || text;
+    } catch (_) {
+        return text;
+    }
+}
+
+function closeSpeedReadExportMenus() {
+    document.querySelectorAll('.speedread-export-panel.open').forEach(panel => panel.classList.remove('open'));
+}
+
+function toggleSpeedReadExportMenu(event) {
+    event.stopPropagation();
+    const wrap = event.currentTarget.closest('.speedread-export-wrap');
+    const panel = wrap ? wrap.querySelector('.speedread-export-panel') : null;
+    const wasOpen = panel && panel.classList.contains('open');
+    closeSpeedReadExportMenus();
+    if (panel && !wasOpen) panel.classList.add('open');
+}
+
+async function exportSingleSpeedRead(eventOrKey, maybeKey, maybeFormat) {
+    let event = null;
+    let key = eventOrKey;
+    let format = maybeKey;
+    if (eventOrKey && typeof eventOrKey === 'object' && eventOrKey.currentTarget) {
+        event = eventOrKey;
+        key = maybeKey;
+        format = maybeFormat;
+        event.stopPropagation();
+    }
+    if (!key || !format) return;
+    if (!backendAvailable) {
+        showStatus('导出依赖 backend/server.py 本地服务；请先启动本地服务后刷新页面。', true);
+        return;
+    }
+    const paper = papers.find(item => item.file_key === key);
+    if (!paper) return;
+    let speedRead = paper.speed_read;
+    if (!(speedRead && speedRead.status === 'success' && speedRead.content)) {
+        speedRead = await fetchSpeedReadCache(key);
+    }
+    if (!(speedRead && speedRead.status === 'success' && speedRead.content)) {
+        showStatus('这篇论文还没有可导出的成功速读。', true);
+        return;
+    }
+    closeSpeedReadExportMenus();
+    const button = event ? event.currentTarget : null;
+    const originalText = button ? button.textContent : '';
+    if (button) {
+        button.disabled = true;
+        button.textContent = '导出中...';
+    }
+    if (speedReadExportPdfBtn) speedReadExportPdfBtn.disabled = true;
+    if (speedReadExportPptxBtn) speedReadExportPptxBtn.disabled = true;
+    showStatus(`正在导出 ${String(format).toUpperCase()}...`, false);
+    try {
+        const response = await fetch(`/api/quick-reading/export?file_key=${encodeURIComponent(key)}&format=${encodeURIComponent(format)}`, { cache: 'no-store' });
+        if (!response.ok) throw new Error(await readResponseError(response));
+        const blob = await response.blob();
+        const filename = filenameFromDisposition(response.headers.get('Content-Disposition'), `speed_read.${format}`);
+        triggerBlobDownload(blob, filename);
+        showStatus(`已导出 ${String(format).toUpperCase()}：${filename}`, false);
+    } catch (err) {
+        showStatus('导出失败：' + (err && err.message ? err.message : String(err)), true);
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+        const latest = papers.find(item => item.file_key === key);
+        const canExport = !!(latest && latest.speed_read && latest.speed_read.status === 'success' && latest.speed_read.content);
+        if (speedReadExportPdfBtn) speedReadExportPdfBtn.disabled = !canExport;
+        if (speedReadExportPptxBtn) speedReadExportPptxBtn.disabled = !canExport;
+    }
+}
+
 async function exportFilteredMarkdown() {
     const papersToExport = getCurrentExportPapers();
     if (!papersToExport.length) {
@@ -1428,6 +1541,13 @@ async function initApp() {
     speedReadGenerateModal.addEventListener('click', (e) => {
         if (e.target === speedReadGenerateModal) closeSpeedReadGenerateDialog();
     });
+    speedReadExportPdfBtn.addEventListener('click', (event) => {
+        if (activeSpeedReadKey) exportSingleSpeedRead(event, activeSpeedReadKey, 'pdf');
+    });
+    speedReadExportPptxBtn.addEventListener('click', (event) => {
+        if (activeSpeedReadKey) exportSingleSpeedRead(event, activeSpeedReadKey, 'pptx');
+    });
+    document.addEventListener('click', closeSpeedReadExportMenus);
 
     // 应用持久化的初始 UI 状态
     sortBySelect.value = currentSortBy;
@@ -1837,6 +1957,7 @@ function createPaperCard(p, opts = {}) {
         speedReadUi.status === 'idle' ? 'is-idle' : '',
         speedReadUi.status === 'success' ? 'has-speedread' : '',
     ].filter(Boolean).join(' ');
+    const canExportSpeedRead = !!(speedReadUi.status === 'success' && speedRead && speedRead.content);
 
     div.innerHTML = `
         <div class="paper-header">
@@ -1869,6 +1990,14 @@ function createPaperCard(p, opts = {}) {
 
         <div class="actions" style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
             <button type="button" class="${speedReadButtonClass}" onclick="handleSpeedReadClick('${p.file_key}')" ${speedReadUi.disabled ? 'disabled' : ''} title="为当前这篇论文生成或打开速读">${escapeHtml(speedReadUi.buttonText)}</button>
+            ${canExportSpeedRead ? `
+            <div class="speedread-export-wrap">
+                <button type="button" onclick="toggleSpeedReadExportMenu(event)" title="导出当前这篇论文的速读">导出为</button>
+                <div class="speedread-export-panel">
+                    <button type="button" onclick="exportSingleSpeedRead(event, '${p.file_key}', 'pdf')">导出 PDF</button>
+                    <button type="button" onclick="exportSingleSpeedRead(event, '${p.file_key}', 'pptx')">导出 PPTX</button>
+                </div>
+            </div>` : ''}
             ${p.pdf_local ? `<button type="button" onclick="openLocalSource('${encodedLocal}')" title="尝试通过 file:// 打开原始文件">打开源文件</button>` : ''}
             <button onclick="toggleEdit(this)">✏️ 编辑</button>
             <button type="button" onclick="openContainingFolder('${encodedLocal}')" title="打开文件所在文件夹并聚焦">📂 打开所在目录</button>
@@ -2087,6 +2216,11 @@ function renderSpeedReadModal(paper) {
     speedReadModalTitle.textContent = `⚡ ${paper.title || '论文速读'}`;
     speedReadMeta.innerHTML = headerBits.length ? escapeHtml(headerBits.join(' · ')) : '未生成速读';
     const canDeleteSpeedRead = !!(speedRead && speedRead.status && speedRead.status !== 'running');
+    const canExportSpeedRead = !!(speedRead && speedRead.status === 'success' && speedRead.content);
+    speedReadExportPdfBtn.hidden = !canExportSpeedRead;
+    speedReadExportPptxBtn.hidden = !canExportSpeedRead;
+    speedReadExportPdfBtn.disabled = !canExportSpeedRead;
+    speedReadExportPptxBtn.disabled = !canExportSpeedRead;
     speedReadDeleteBtn.hidden = !canDeleteSpeedRead;
     speedReadDeleteBtn.disabled = speedReadUi.status === 'running';
     speedReadRegenerateBtn.disabled = speedReadUi.status === 'running';

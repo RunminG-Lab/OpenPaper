@@ -7,7 +7,8 @@ import subprocess
 import shutil
 import threading
 import json
-from urllib.parse import urlparse, parse_qs, unquote
+import re
+from urllib.parse import urlparse, parse_qs, unquote, quote
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from watchdog.observers import Observer
 
@@ -22,6 +23,7 @@ from backend.metadata import (
 from backend.quick_reading import (
     generate_speedread, test_speedread_config, get_speedread_cache,
     list_speedread_cache, write_speedread_cache, rebuild_speedread_index,
+    export_speedread,
 )
 from backend.watcher import PDFHandler
 
@@ -257,6 +259,17 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _send_binary(self, status, body, content_type, filename):
+        fallback = re.sub(r"[^A-Za-z0-9_.-]+", "_", filename or "openpaper_speedread_export")
+        fallback = fallback.strip("._") or "openpaper_speedread_export"
+        self.send_response(status)
+        self.send_header("Content-Type", content_type or "application/octet-stream")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Disposition", f"attachment; filename=\"{fallback}\"; filename*=UTF-8''{quote(filename or fallback)}")
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == "/api/open-folder":
@@ -273,6 +286,9 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             return
         if parsed.path == "/api/quick-reading":
             self.handle_speedread_cache(parse_qs(parsed.query))
+            return
+        if parsed.path == "/api/quick-reading/export":
+            self.handle_speedread_export(parse_qs(parsed.query))
             return
         if parsed.path == "/api/ping":
             self._send_json(200, {"ok": True, "service": "watchdog"})
@@ -392,6 +408,16 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
             options=options,
         )
         self._send_json(result.status, result.payload)
+
+    def handle_speedread_export(self, query):
+        file_key = (query.get("file_key") or [""])[0].strip()
+        export_format = (query.get("format") or [""])[0].strip()
+        result = export_speedread(file_key, export_format, WORKSPACE_ROOT, METADATA_FILE, QUICK_READING_CACHE_DIR)
+        payload = result.payload if isinstance(result.payload, dict) else {}
+        if result.status == 200 and isinstance(payload.get("data"), (bytes, bytearray)):
+            self._send_binary(result.status, payload["data"], payload.get("content_type"), payload.get("filename"))
+            return
+        self._send_json(result.status, payload or {"ok": False, "error": "导出失败"})
 
     def handle_test_speedread_config(self, payload):
         api_config = payload.get("apiConfig") or {}

@@ -8,7 +8,7 @@ from backend.metadata import (
     delete_paper, delete_speedread, list_recycle_bin, restore_paper, restore_recycle_item, purge_paper, purge_all_papers,
     save_metadata, update_paper,
 )
-from backend.quick_reading import generate_speedread, test_speedread_config
+from backend.quick_reading import generate_speedread, test_speedread_config, export_speedread
 from backend.watcher import PDFHandler
 
 __all__ = [
@@ -17,6 +17,6 @@ __all__ = [
     "load_metadata", "atomic_write_metadata",
     "delete_paper", "delete_speedread", "list_recycle_bin", "restore_paper", "restore_recycle_item", "purge_paper", "purge_all_papers",
     "save_metadata", "update_paper",
-    "generate_speedread", "test_speedread_config",
+    "generate_speedread", "test_speedread_config", "export_speedread",
     "PDFHandler",
 ]
