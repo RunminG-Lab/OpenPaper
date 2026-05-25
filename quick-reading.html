@@ -7,21 +7,35 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <style>
 :root {
-    --accent: #0f766e;
-    --accent-hover: #115e59;
-    --bg: #f6f7f8;
-    --surface: #ffffff;
-    --surface-soft: #eef3f2;
-    --border: #dbe3e1;
-    --text: #1f2937;
-    --muted: #64748b;
-    --strong: #0f172a;
+    --accent-color: #4f46e5;
+    --accent-color-hover: #4338ca;
+    --bg-color: #f5f5f5;
+    --text-color: #1f2937;
+    --muted-color: #64748b;
+    --surface-bg: #ffffff;
+    --surface-muted-bg: #f3f4f6;
+    --surface-border: #e2e8f0;
+    --surface-text-color: #374151;
+    --surface-strong-color: #111827;
+    --control-bg: #ffffff;
+    --control-text-color: #111827;
+    --control-border: #d1d5db;
+    --accent: var(--accent-color);
+    --accent-hover: var(--accent-color-hover);
+    --accent-soft: color-mix(in srgb, var(--accent-color) 12%, transparent);
+    --bg: var(--bg-color);
+    --surface: var(--surface-bg);
+    --surface-soft: var(--surface-muted-bg);
+    --border: var(--surface-border);
+    --text: var(--surface-text-color);
+    --muted: var(--muted-color);
+    --strong: var(--surface-strong-color);
     --danger: #b91c1c;
 }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--text); background: var(--bg); }
 button, input, textarea, select { font: inherit; }
-button { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+button { border: 1px solid var(--control-border); background: var(--control-bg); color: var(--control-text-color); border-radius: 6px; padding: 7px 12px; cursor: pointer; }
 button:hover { background: var(--surface-soft); }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 button.primary:hover { background: var(--accent-hover); }
@@ -49,29 +63,29 @@ h1 { margin: 0 0 8px; color: var(--strong); font-size: clamp(1.5rem, 2.5vw, 2.2r
 .qr-technical-summary { line-height: 1.8; color: var(--strong); margin-bottom: 12px; }
 .qr-experiment-summary { line-height: 1.8; color: var(--strong); margin-bottom: 12px; }
 .qr-mini-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 12px 0 16px; }
-.qr-mini-metrics div { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: #fbfdfc; }
+.qr-mini-metrics div { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--surface-soft); }
 .qr-mini-metrics span { display: block; color: var(--muted); font-size: 0.85rem; margin-bottom: 4px; }
 .qr-mini-metrics strong { color: var(--strong); line-height: 1.5; }
 .qr-subsection { margin-top: 16px; }
 .qr-subsection h3 { margin: 0 0 10px; font-size: 0.98rem; color: var(--strong); }
 .qr-record-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
-.qr-record { border: 1px solid var(--border); background: #fbfdfc; border-radius: 8px; padding: 12px; }
+.qr-record { border: 1px solid var(--border); background: var(--surface-soft); border-radius: 8px; padding: 12px; }
 .qr-record p { margin: 6px 0 0; line-height: 1.65; }
 .qr-record-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; color: var(--strong); }
-.qr-record-head span { color: var(--accent); background: #e3f4f1; border-radius: 999px; padding: 2px 8px; font-size: 0.78rem; }
+.qr-record-head span { color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 8px; font-size: 0.78rem; }
 .qr-term-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.qr-term-tag { display: inline-flex; color: var(--accent); background: #e3f4f1; border-radius: 999px; padding: 2px 8px; font-size: 0.78rem; font-weight: 600; }
+.qr-term-tag { display: inline-flex; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 8px; font-size: 0.78rem; font-weight: 600; }
 .qr-page-ref { display: inline-flex; margin-top: 8px; color: var(--accent); font-size: 0.82rem; }
 .qr-two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
 .qr-empty-line { color: var(--muted); font-style: italic; }
 .qr-figure-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
-.qr-figure-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fbfdfc; }
+.qr-figure-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
 .qr-figure-media img { width: 100%; display: block; background: #e5e7eb; }
-.qr-image-placeholder { aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; color: var(--muted); background: #eef2f7; }
+.qr-image-placeholder { aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; color: var(--muted); background: var(--surface-soft); }
 .qr-figure-body { padding: 14px; }
 .qr-figure-body h3 { margin: 8px 0 10px; font-size: 1rem; color: var(--strong); }
 .qr-figure-body p { margin: 7px 0; line-height: 1.65; }
-.qr-chip { display: inline-flex; color: var(--accent); background: #e3f4f1; border-radius: 999px; padding: 3px 9px; font-size: 0.8rem; font-weight: 600; }
+.qr-chip { display: inline-flex; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 3px 9px; font-size: 0.8rem; font-weight: 600; }
 .modal-mask { display: none; position: fixed; inset: 0; z-index: 50; background: rgba(15, 23, 42, 0.45); align-items: flex-start; justify-content: center; padding: 58px 18px; overflow: auto; }
 .modal-mask.open { display: flex; }
 .modal { width: min(620px, 100%); border-radius: 10px; background: var(--surface); box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22); overflow: hidden; }
@@ -80,11 +94,11 @@ h1 { margin: 0 0 8px; color: var(--strong); font-size: clamp(1.5rem, 2.5vw, 2.2r
 .modal-body { padding: 16px 18px; }
 .modal-row { margin-bottom: 14px; }
 .modal-row label { display: block; color: var(--strong); margin-bottom: 6px; font-weight: 600; }
-.modal-row textarea, .modal-row select, .modal-row input[type=number] { width: 100%; border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; color: var(--text); background: #fff; }
+.modal-row textarea, .modal-row select, .modal-row input[type=number] { width: 100%; border: 1px solid var(--control-border); border-radius: 7px; padding: 8px 10px; color: var(--control-text-color); background: var(--control-bg); }
 .modal-row textarea { min-height: 94px; resize: vertical; line-height: 1.6; }
 .modal-check { display: flex; align-items: center; gap: 8px; color: var(--text); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
-.progress-wrap { display: none; margin-top: 14px; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: #fbfdfc; }
+.progress-wrap { display: none; margin-top: 14px; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--surface-soft); }
 .progress-wrap.open { display: block; }
 .progress-bar { height: 8px; border-radius: 999px; background: #dbe3e1; overflow: hidden; margin: 8px 0; }
 .progress-fill { height: 100%; width: 0%; background: var(--accent); transition: width 0.3s ease; }
@@ -154,7 +168,7 @@ h1 { margin: 0 0 8px; color: var(--strong); font-size: clamp(1.5rem, 2.5vw, 2.2r
             </div>
             <div class="modal-row">
                 <label for="generate-max-figures">最大图表数量</label>
-                <input id="generate-max-figures" type="number" min="3" max="8" step="1" value="5">
+                <input id="generate-max-figures" type="number" min="3" max="12" step="1" value="5">
             </div>
             <div id="generate-progress" class="progress-wrap">
                 <strong id="generate-progress-message">准备生成...</strong>
@@ -173,6 +187,22 @@ h1 { margin: 0 0 8px; color: var(--strong); font-size: clamp(1.5rem, 2.5vw, 2.2r
 <script src="assets/quick-reading-common.js?v=technical-detail-read"></script>
 <script>
 const SPEEDREAD_CONFIG_KEY = 'papers-visualizer-speedread-config-v1';
+const THEME_KEY = 'papers-visualizer-theme-v1';
+const defaultTheme = {
+    accent: '#4f46e5',
+    bg: '#f5f5f5',
+    text: '#1f2937',
+    title: '#111827',
+    muted: '#64748b',
+    surfaceBg: '#ffffff',
+    surfaceMutedBg: '#f3f4f6',
+    surfaceBorder: '#e2e8f0',
+    surfaceText: '#374151',
+    surfaceStrong: '#111827',
+    controlBg: '#ffffff',
+    controlText: '#111827',
+    controlBorder: '#d1d5db',
+};
 const fileKey = new URLSearchParams(window.location.search).get('file_key') || '';
 const state = { metadata: {}, paper: null, speedRead: null, cacheIndex: {}, loading: true, error: '' };
 let progressTimer = null;
@@ -194,6 +224,56 @@ const generateProgressFill = document.getElementById('generate-progress-fill');
 const generateProgressMeta = document.getElementById('generate-progress-meta');
 const generateError = document.getElementById('generate-error');
 const generateSubmit = document.getElementById('generate-submit');
+
+function shadeColor(hex, percent) {
+    try {
+        const match = /^#?([a-f0-9]{6})$/i.exec(hex || '');
+        if (!match) return hex;
+        const num = parseInt(match[1], 16);
+        let r = (num >> 16) & 0xff;
+        let g = (num >> 8) & 0xff;
+        let b = num & 0xff;
+        const target = percent < 0 ? 0 : 255;
+        const ratio = Math.abs(percent) / 100;
+        r = Math.round((target - r) * ratio) + r;
+        g = Math.round((target - g) * ratio) + g;
+        b = Math.round((target - b) * ratio) + b;
+        return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+    } catch (_) {
+        return hex;
+    }
+}
+
+function loadTheme() {
+    try {
+        const raw = localStorage.getItem(THEME_KEY);
+        return raw ? { ...defaultTheme, ...JSON.parse(raw) } : { ...defaultTheme };
+    } catch (_) {
+        return { ...defaultTheme };
+    }
+}
+
+function applyTheme(theme = loadTheme()) {
+    const root = document.documentElement;
+    root.style.setProperty('--accent-color', theme.accent);
+    root.style.setProperty('--accent-color-hover', shadeColor(theme.accent, -15));
+    root.style.setProperty('--bg-color', theme.bg);
+    root.style.setProperty('--text-color', theme.text);
+    root.style.setProperty('--muted-color', theme.muted);
+    root.style.setProperty('--surface-bg', theme.surfaceBg);
+    root.style.setProperty('--surface-muted-bg', theme.surfaceMutedBg);
+    root.style.setProperty('--surface-border', theme.surfaceBorder);
+    root.style.setProperty('--surface-text-color', theme.surfaceText);
+    root.style.setProperty('--surface-strong-color', theme.surfaceStrong);
+    root.style.setProperty('--control-bg', theme.controlBg);
+    root.style.setProperty('--control-text-color', theme.controlText);
+    root.style.setProperty('--control-border', theme.controlBorder);
+}
+
+applyTheme();
+window.addEventListener('storage', event => {
+    if (event.key === THEME_KEY) applyTheme();
+});
 
 function loadSpeedReadConfig() {
     try {
@@ -355,7 +435,7 @@ function readGenerateOptions() {
         focus: ['general', 'experiment', 'reproduction', 'figure'],
         extra_prompt: generateExtraPrompt.value.trim(),
         include_figure_insights: generateIncludeFigures.checked,
-        max_figures: Math.max(3, Math.min(8, Number(generateMaxFigures.value || 5))),
+        max_figures: Math.max(3, Math.min(12, Number(generateMaxFigures.value || 5))),
     };
 }
 

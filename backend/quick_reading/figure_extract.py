@@ -14,12 +14,15 @@ CAPTION_LINE_RE = re.compile(
     r"^\s*((?:Figure|Fig\.?|Table|图|表)\s*[\dIVXLC]+[A-Za-z0-9.\-]*?\s*[:：.]\s*.{0,260})",
     re.I,
 )
+MAX_FIGURE_CANDIDATES = 12
 
 
 def _extract_captions(text):
     captions = []
     for match in CAPTION_RE.finditer(text or ""):
         caption = clean_page_text(match.group(1), 320)
+        if len(_caption_match_tokens(caption)) < 2:
+            continue
         if caption and caption not in captions:
             captions.append(caption)
         if len(captions) >= 3:
@@ -48,6 +51,31 @@ def _clean_label_token(value):
 def _caption_number(caption):
     match = re.search(r"(?:Figure|Fig\.?|Table|图|表)\s*([\dIVXLC]+)", caption or "", re.I)
     return _clean_label_token(match.group(1)) if match else ""
+
+
+def _label_number_matches(words, index, expected_number):
+    if not expected_number:
+        return True
+    lookahead = [_clean_label_token(item.get("text")) for item in words[index + 1:index + 4]]
+    if expected_number.isdigit():
+        return any(token == expected_number or re.match(rf"^{re.escape(expected_number)}[a-z]?$", token) for token in lookahead)
+    return any(token == expected_number for token in lookahead)
+
+
+def _caption_match_tokens(value):
+    tokens = re.findall(r"[a-z0-9]+", (value or "").lower())
+    ignored = {"figure", "fig", "table", "the", "and", "for", "with", "from", "left", "right", "page"}
+    return [token for token in tokens if token not in ignored and not re.fullmatch(r"[ivxlcdm]+|\d+", token)]
+
+
+def _caption_text_matches(candidate, caption):
+    candidate_tokens = _caption_match_tokens(candidate)
+    caption_tokens = _caption_match_tokens(caption)
+    if len(caption_tokens) < 2:
+        return True
+    required = caption_tokens[: min(5, len(caption_tokens))]
+    matched = sum(1 for token in required if token in candidate_tokens)
+    return matched >= min(2, len(required))
 
 
 def _split_word_segments(line_words):
@@ -97,6 +125,8 @@ def _extract_captions_from_layout(layout):
             if not match:
                 continue
             caption = clean_page_text(match.group(1), 320)
+            if len(_caption_match_tokens(caption)) < 2:
+                continue
             if caption and caption not in captions:
                 captions.append(caption)
             if len(captions) >= 3:
@@ -117,10 +147,8 @@ def _find_caption_bbox(layout, caption):
         is_chinese_label = word.get("text", "").startswith("表" if kind == "table" else "图")
         if token not in label_tokens and not is_chinese_label:
             continue
-        if expected_number:
-            lookahead = "".join(_clean_label_token(item.get("text")) for item in words[index + 1:index + 4])
-            if expected_number not in lookahead[: max(len(expected_number) + 2, 2)]:
-                continue
+        if not _label_number_matches(words, index, expected_number):
+            continue
         anchor_y = float(word.get("y0") or 0)
         anchor_height = max(float(word.get("y1") or 0) - anchor_y, 3)
         line_words = _line_words_for_anchor(words, anchor_y, anchor_height)
@@ -131,6 +159,8 @@ def _find_caption_bbox(layout, caption):
         segment_text = " ".join(str(item.get("text") or "") for item in segment).strip()
         if not CAPTION_LINE_RE.match(segment_text):
             continue
+        if not _caption_text_matches(segment_text, caption):
+            continue
         return {
             "x0": min(float(item.get("x0") or 0) for item in segment),
             "y0": min(float(item.get("y0") or 0) for item in segment),
@@ -138,6 +168,14 @@ def _find_caption_bbox(layout, caption):
             "y1": max(float(item.get("y1") or 0) for item in segment),
         }
     return None
+
+
+def _column_bounds_for_bbox(page_width, bbox, full_width=False):
+    if full_width or bbox["x1"] - bbox["x0"] > page_width * 0.55:
+        return page_width * 0.06, page_width * 0.94
+    if bbox["x0"] < page_width * 0.50:
+        return page_width * 0.06, page_width * 0.49
+    return page_width * 0.51, page_width * 0.94
 
 
 def _make_crop_rect(page_width, page_height, x0, y0, x1, y1):
@@ -187,6 +225,24 @@ def _table_body_bottom(layout, bbox, x0, x1, page_height):
     return min(page_height * 0.96, last["y1"] + 10)
 
 
+def _table_body_above(layout, bbox, x0, x1, page_height):
+    rows = _line_rows_in_region(layout.get("words") or [], x0, x1, page_height * 0.04, bbox["y0"] - 2)
+    if not rows or bbox["y0"] - rows[-1]["y1"] > page_height * 0.09:
+        return None
+    first = rows[-1]
+    for row in reversed(rows[:-1]):
+        if first["y0"] - row["y1"] > 18:
+            break
+        first = row
+    return max(page_height * 0.04, first["y0"] - 10)
+
+
+def _crop_signature(crop_rect):
+    if not crop_rect:
+        return None
+    return tuple(round(float(crop_rect.get(key) or 0), 1) for key in ("x0", "y0", "x1", "y1"))
+
+
 def _crop_rect_for_candidate(pdf_path, page_no, caption, layout_cache):
     if not page_no:
         return None
@@ -204,31 +260,25 @@ def _crop_rect_for_candidate(pdf_path, page_no, caption, layout_cache):
     if not bbox:
         return None
     is_table = _caption_kind(caption) == "table"
-    is_upper_figure = not is_table and bbox["y0"] < page_height * 0.45
-
-    if is_upper_figure or bbox["x1"] - bbox["x0"] > page_width * 0.55:
-        x0 = page_width * 0.06
-        x1 = page_width * 0.94
-    elif bbox["x0"] < page_width * 0.50:
-        x0 = page_width * 0.06
-        x1 = page_width * 0.49
-    else:
-        x0 = page_width * 0.51
-        x1 = page_width * 0.94
+    x0, x1 = _column_bounds_for_bbox(page_width, bbox)
 
     if is_table:
-        y0 = min(page_height * 0.96, bbox["y1"] + 18)
-        y1 = _table_body_bottom(layout, bbox, x0, x1, page_height)
-        if not y1:
-            y1 = min(page_height * 0.96, y0 + page_height * 0.42)
+        y0 = _table_body_above(layout, bbox, x0, x1, page_height)
+        if y0:
+            y1 = min(page_height * 0.96, bbox["y1"] + 8)
+        else:
+            y0 = min(page_height * 0.96, bbox["y1"] + 10)
+            y1 = _table_body_bottom(layout, bbox, x0, x1, page_height)
+            if not y1:
+                y1 = min(page_height * 0.96, y0 + page_height * 0.34)
     else:
         y1 = bbox["y0"] - 8
-        if y1 < page_height * 0.18:
+        if y1 > page_height * 0.06:
+            window = 0.34 if bbox["y0"] < page_height * 0.45 else 0.25
+            y0 = max(page_height * 0.04, y1 - page_height * window)
+        else:
             y0 = min(page_height * 0.18, bbox["y1"] + 6)
             y1 = min(page_height * 0.72, y0 + page_height * 0.42)
-        else:
-            window = 0.34 if is_upper_figure else 0.25
-            y0 = max(page_height * 0.04, y1 - page_height * window)
     return _make_crop_rect(page_width, page_height, x0, y0, x1, y1)
 
 
@@ -265,7 +315,7 @@ class FigureExtractionService:
             requested = int(max_figures)
         except (TypeError, ValueError):
             requested = 5
-        requested = max(0, min(8, requested))
+        requested = max(0, min(MAX_FIGURE_CANDIDATES, requested))
         if requested <= 0:
             return []
 
@@ -304,18 +354,25 @@ class FigureExtractionService:
             selected.append(item)
             used_keys.add(key)
             used_pages.add(item["page"])
-            if len(selected) >= requested:
+            if len(selected) >= requested * 2:
                 break
 
         assets = []
-        selected_assets = sorted(selected[:requested], key=lambda item: (item.get("page") or 0, item.get("label") or ""))
+        used_crop_signatures = set()
+        selected_assets = sorted(selected, key=lambda item: (item.get("page") or 0, item.get("label") or ""))
         for item in selected_assets:
+            if len(assets) >= requested:
+                break
             page_no = int(item.get("page") or 0)
             caption = item.get("caption") or ""
             label = item.get("label") or _caption_label(caption, page_no)
             crop_rect = _crop_rect_for_candidate(pdf_path, page_no, caption, layout_cache)
             if not crop_rect:
                 continue
+            crop_key = (page_no, _crop_signature(crop_rect))
+            if crop_key in used_crop_signatures:
+                continue
+            used_crop_signatures.add(crop_key)
             asset_id = f"fig_{len(assets) + 1:03d}"
             image_path = ""
             try:

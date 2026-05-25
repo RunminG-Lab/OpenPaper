@@ -12,6 +12,7 @@ ALLOWED_METHOD_ROLES = {"proposed", "baseline", "ablation", "variant", "other"}
 ALLOWED_DIFFICULTIES = {"low", "medium", "high", "unknown"}
 ALLOWED_TERM_BASES = {"paper", "general_background"}
 DEFAULT_FOCUS = ["general", "experiment", "reproduction", "figure"]
+MAX_FIGURE_CANDIDATES = 12
 LEGACY_FIGURE_LABEL_RE = re.compile(
     r"^\s*(展示什么|看什么|先看哪里|视觉元素|支撑结论|它说明了什么|为什么重要|方法/实验关系|容易误读)\s*[:：]\s*"
 )
@@ -112,7 +113,7 @@ def normalize_generation_options(options, default_max_figures=5):
         max_figures = int(source.get("max_figures") or default_max_figures or 5)
     except (TypeError, ValueError):
         max_figures = int(default_max_figures or 5)
-    max_figures = max(3, min(8, max_figures))
+    max_figures = max(3, min(MAX_FIGURE_CANDIDATES, max_figures))
 
     return {
         "depth": depth,
