@@ -10,6 +10,7 @@ MISSING_TEXT = "论文中未明确说明"
 ALLOWED_DEPTHS = {"brief", "standard", "deep"}
 ALLOWED_METHOD_ROLES = {"proposed", "baseline", "ablation", "variant", "other"}
 ALLOWED_DIFFICULTIES = {"low", "medium", "high", "unknown"}
+ALLOWED_TERM_BASES = {"paper", "general_background"}
 DEFAULT_FOCUS = ["general", "experiment", "reproduction", "figure"]
 LEGACY_FIGURE_LABEL_RE = re.compile(
     r"^\s*(展示什么|看什么|先看哪里|视觉元素|支撑结论|它说明了什么|为什么重要|方法/实验关系|容易误读)\s*[:：]\s*"
@@ -244,6 +245,88 @@ def _normalize_main_results(value):
     return records
 
 
+def _normalize_technical_modules(value):
+    if not isinstance(value, list):
+        return []
+    records = []
+    for item in value:
+        if isinstance(item, str):
+            records.append({
+                "name": text_value(item),
+                "role": MISSING_TEXT,
+                "mechanism": MISSING_TEXT,
+                "technical_explanation": MISSING_TEXT,
+                "terms": [MISSING_TEXT],
+                "page_refs": [],
+            })
+            if len(records) >= 8:
+                break
+            continue
+        if not isinstance(item, dict):
+            continue
+        records.append({
+            "name": _dict_text(item, "name"),
+            "role": _dict_text(item, "role"),
+            "mechanism": _dict_text(item, "mechanism"),
+            "technical_explanation": _dict_text(item, "technical_explanation"),
+            "terms": list_value(item.get("terms"), max_items=6),
+            "page_refs": normalize_page_refs(item.get("page_refs")),
+        })
+        if len(records) >= 8:
+            break
+    return records
+
+
+def _normalize_technical_terms(value):
+    if not isinstance(value, list):
+        return []
+    records = []
+    for item in value:
+        if isinstance(item, str):
+            records.append({
+                "term": text_value(item),
+                "explanation": MISSING_TEXT,
+                "paper_context": MISSING_TEXT,
+                "basis": "paper",
+            })
+            if len(records) >= 12:
+                break
+            continue
+        if not isinstance(item, dict):
+            continue
+        basis = text_value(item.get("basis"), "paper").lower()
+        if basis not in ALLOWED_TERM_BASES:
+            basis = "paper"
+        records.append({
+            "term": _dict_text(item, "term"),
+            "explanation": _dict_text(item, "explanation"),
+            "paper_context": _dict_text(item, "paper_context"),
+            "basis": basis,
+        })
+        if len(records) >= 12:
+            break
+    return records
+
+
+def normalize_technical_detail_read(value):
+    if isinstance(value, str):
+        return {
+            "summary": text_value(value),
+            "modules": [],
+            "terms": [],
+            "background_notes": [MISSING_TEXT],
+            "missing_details": [MISSING_TEXT],
+        }
+    source = value if isinstance(value, dict) else {}
+    return {
+        "summary": text_value(source.get("summary")),
+        "modules": _normalize_technical_modules(source.get("modules")),
+        "terms": _normalize_technical_terms(source.get("terms")),
+        "background_notes": list_value(source.get("background_notes"), max_items=8),
+        "missing_details": list_value(source.get("missing_details"), max_items=8),
+    }
+
+
 def normalize_experiment_read(value):
     if isinstance(value, str):
         return {
@@ -453,6 +536,7 @@ def normalize_speedread_payload(parsed, figure_assets, depth="standard"):
         "problem_and_motivation": text_value(source.get("problem_and_motivation")),
         "method_overview": text_value(source.get("method_overview")),
         "method_steps": list_value(source.get("method_steps"), max_items=8),
+        "technical_detail_read": normalize_technical_detail_read(source.get("technical_detail_read")),
         "experiment_read": normalize_experiment_read(source.get("experiment_read")),
         "contributions": list_value(source.get("contributions"), max_items=6),
         "limitations": list_value(source.get("limitations"), max_items=6),

@@ -175,6 +175,21 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 .speedread-paragraph { color:var(--surface-text-color); line-height:1.8; white-space:pre-wrap; }
 .speedread-list { margin:0; padding-left:18px; color:var(--surface-text-color); }
 .speedread-list li { margin:0 0 8px; line-height:1.7; }
+.speedread-panel .qr-technical-summary { color:var(--surface-text-color); line-height:1.8; margin-bottom:12px; }
+.speedread-panel .qr-bullets { margin:0; padding-left:18px; color:var(--surface-text-color); }
+.speedread-panel .qr-bullets li { margin:0 0 8px; line-height:1.7; }
+.speedread-panel .qr-subsection { margin-top:14px; }
+.speedread-panel .qr-subsection h3 { margin:0 0 8px; font-size:0.94em; color:var(--surface-strong-color); }
+.speedread-panel .qr-record-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px; }
+.speedread-panel .qr-record { border:1px solid var(--surface-border); border-radius:10px; background:var(--surface-muted-bg); padding:12px; }
+.speedread-panel .qr-record p { margin:6px 0 0; color:var(--surface-text-color); line-height:1.65; }
+.speedread-panel .qr-record-head { display:flex; justify-content:space-between; gap:8px; align-items:center; color:var(--surface-strong-color); }
+.speedread-panel .qr-record-head span { color:var(--accent-color); background:color-mix(in srgb, var(--accent-color) 12%, transparent); border-radius:999px; padding:2px 8px; font-size:0.78em; }
+.speedread-panel .qr-page-ref { display:inline-flex; color:var(--accent-color); font-size:0.82em; white-space:nowrap; }
+.speedread-panel .qr-two-col { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; }
+.speedread-panel .qr-empty-line { color:#94a3b8; font-style:italic; }
+.speedread-panel .qr-term-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.speedread-panel .qr-term-tag { display:inline-flex; color:var(--accent-color); background:color-mix(in srgb, var(--accent-color) 12%, transparent); border-radius:999px; padding:2px 8px; font-size:0.78em; font-weight:600; }
 .speedread-figure-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; }
 .speedread-figure-card { border:1px solid var(--surface-border); border-radius:12px; overflow:hidden; background:var(--surface-bg); display:flex; flex-direction:column; }
 .speedread-figure-card img { width:100%; display:block; background:#e5e7eb; }
@@ -542,6 +557,7 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 
 <div id="papers" class="groups"></div>
 
+<script src="assets/quick-reading-common.js?v=technical-detail-read"></script>
 <script>
 const EMBEDDED_PAPERS = [];
 let papers = [];
@@ -2095,6 +2111,13 @@ function renderSpeedReadModal(paper) {
     }
 
     const content = speedRead.content || {};
+    const speedReadCommon = window.QuickReadingCommon || null;
+    const normalizedContent = speedReadCommon && speedReadCommon.normalizeSpeedReadContent
+        ? speedReadCommon.normalizeSpeedReadContent(speedRead)
+        : null;
+    const technicalDetailHtml = speedReadCommon && speedReadCommon.renderTechnicalDetailRead
+        ? speedReadCommon.renderTechnicalDetailRead(normalizedContent ? normalizedContent.technical_detail_read : content.technical_detail_read)
+        : `<div class="speedread-paragraph">${renderTextBlock((content.technical_detail_read && content.technical_detail_read.summary) || '论文中未明确说明')}</div>`;
     const figureCandidates = Array.isArray(speedRead.candidate_pages) ? speedRead.candidate_pages : [];
     const figureCandidateById = new Map(figureCandidates.map(asset => [String(asset.id || ''), asset]));
     const speedReadImageVersion = encodeURIComponent(speedRead.updated_at || speedRead.generated_at || '');
@@ -2162,13 +2185,18 @@ function renderSpeedReadModal(paper) {
         </section>
 
         <section class="speedread-panel">
-            <h3>核心图表解读</h3>
-            ${figureCardsHtml}
+            <h3>技术细节速读</h3>
+            ${technicalDetailHtml}
         </section>
 
         <section class="speedread-panel">
             <h3>实验速读</h3>
             <div class="speedread-paragraph">${renderTextBlock(experimentReadText)}</div>
+        </section>
+
+        <section class="speedread-panel">
+            <h3>核心图表解读</h3>
+            ${figureCardsHtml}
         </section>
 
         <div class="speedread-grid">

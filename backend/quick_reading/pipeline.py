@@ -25,10 +25,10 @@ from .storage import load_speedread_cache, write_speedread_cache
 
 def _output_token_budget(depth):
     if depth == "brief":
-        return 2600
+        return 3600
     if depth == "deep":
-        return 4200
-    return 3400
+        return 7200
+    return 5200
 
 
 def _token_status(grounding_text, max_source_chars, max_tokens):
@@ -211,7 +211,7 @@ def test_speedread_config(api_config: dict, workspace_root: str) -> _Result:
         options = normalize_generation_options({"include_figure_insights": False}, 3)
         prompt = build_speedread_prompt(test_paper_meta, test_grounding_text, [], options)
         client = OpenAICompatibleClient(api_config, workspace_root)
-        parsed, request_mode, _endpoint = client.request_json(prompt, [], max_tokens=1800)
+        parsed, request_mode, _endpoint = client.request_json(prompt, [], max_tokens=3000)
         normalized = normalize_speedread_payload(parsed, [])
         return _Result(200, {
             "ok": True,

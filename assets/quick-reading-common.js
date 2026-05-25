@@ -171,6 +171,70 @@
         };
     }
 
+    function normalizeTechnicalModules(value) {
+        if (!Array.isArray(value)) return [];
+        return value.map(item => {
+            if (typeof item === 'string') {
+                return {
+                    name: textValue(item),
+                    role: MISSING_TEXT,
+                    mechanism: MISSING_TEXT,
+                    technical_explanation: MISSING_TEXT,
+                    terms: [MISSING_TEXT],
+                    page_refs: [],
+                };
+            }
+            if (!item || typeof item !== 'object') return null;
+            return {
+                name: textValue(item.name),
+                role: textValue(item.role),
+                mechanism: textValue(item.mechanism),
+                technical_explanation: textValue(item.technical_explanation),
+                terms: listValue(item.terms).slice(0, 6),
+                page_refs: pageRefs(item.page_refs),
+            };
+        }).filter(Boolean).slice(0, 8);
+    }
+
+    function normalizeTechnicalTerms(value) {
+        if (!Array.isArray(value)) return [];
+        return value.map(item => {
+            if (typeof item === 'string') {
+                return { term: textValue(item), explanation: MISSING_TEXT, paper_context: MISSING_TEXT, basis: 'paper' };
+            }
+            if (!item || typeof item !== 'object') return null;
+            const basis = ['paper', 'general_background'].includes(String(item.basis || '').toLowerCase())
+                ? String(item.basis).toLowerCase()
+                : 'paper';
+            return {
+                term: textValue(item.term),
+                explanation: textValue(item.explanation),
+                paper_context: textValue(item.paper_context),
+                basis,
+            };
+        }).filter(Boolean).slice(0, 12);
+    }
+
+    function normalizeTechnicalDetailRead(technicalDetailRead) {
+        if (typeof technicalDetailRead === 'string') {
+            return {
+                summary: textValue(technicalDetailRead),
+                modules: [],
+                terms: [],
+                background_notes: [MISSING_TEXT],
+                missing_details: [MISSING_TEXT],
+            };
+        }
+        const source = technicalDetailRead && typeof technicalDetailRead === 'object' ? technicalDetailRead : {};
+        return {
+            summary: textValue(source.summary),
+            modules: normalizeTechnicalModules(source.modules),
+            terms: normalizeTechnicalTerms(source.terms),
+            background_notes: listValue(source.background_notes).slice(0, 8),
+            missing_details: listValue(source.missing_details).slice(0, 8),
+        };
+    }
+
     function compactFigureSummary(item = {}, asset = {}) {
         const direct = cleanFigureSummary(item.summary || item.interpretation || item.analysis || item.description, '');
         if (direct) return direct;
@@ -273,6 +337,7 @@
             problem_and_motivation: textValue(content.problem_and_motivation),
             method_overview: textValue(content.method_overview),
             method_steps: listValue(content.method_steps),
+            technical_detail_read: normalizeTechnicalDetailRead(content.technical_detail_read),
             experiment_read: normalizeExperimentRead(content.experiment_read),
             contributions: listValue(content.contributions),
             limitations: listValue(content.limitations),
@@ -293,6 +358,34 @@
     function renderRecordCards(items, renderer) {
         if (!Array.isArray(items) || !items.length) return renderEmptyLine();
         return `<div class="qr-record-grid">${items.map(renderer).join('')}</div>`;
+    }
+
+    function renderTermTags(items) {
+        const terms = listValue(items, '').filter(item => item && item !== MISSING_TEXT);
+        if (!terms.length) return '';
+        return `<div class="qr-term-tags">${terms.map(item => `<span class="qr-term-tag">${escapeHtml(item)}</span>`).join('')}</div>`;
+    }
+
+    function renderTechnicalDetailRead(technicalDetailRead) {
+        const data = normalizeTechnicalDetailRead(technicalDetailRead);
+        return `
+            <div class="qr-technical-summary">${renderTextBlock(data.summary)}</div>
+            <section class="qr-subsection"><h3>关键模块与机制</h3>${renderRecordCards(data.modules, item => `
+                <article class="qr-record"><div class="qr-record-head"><strong>${escapeHtml(item.name)}</strong>${renderRefs(item.page_refs)}</div>
+                <p><b>作用：</b>${renderTextBlock(item.role)}</p><p><b>机制：</b>${renderTextBlock(item.mechanism)}</p>
+                <p><b>技术解释：</b>${renderTextBlock(item.technical_explanation)}</p>${renderTermTags(item.terms)}</article>`)}
+            </section>
+            <section class="qr-subsection"><h3>术语与上下文</h3>${renderRecordCards(data.terms, item => {
+                const basisText = item.basis === 'general_background' ? '通用背景' : '论文证据';
+                return `<article class="qr-record"><div class="qr-record-head"><strong>${escapeHtml(item.term)}</strong><span>${escapeHtml(basisText)}</span></div>
+                <p><b>解释：</b>${renderTextBlock(item.explanation)}</p><p><b>本文上下文：</b>${renderTextBlock(item.paper_context)}</p></article>`;
+            })}
+            </section>
+            <div class="qr-two-col">
+                <section class="qr-subsection"><h3>必要背景</h3>${renderBulletList(data.background_notes)}</section>
+                <section class="qr-subsection"><h3>缺失细节</h3>${renderBulletList(data.missing_details)}</section>
+            </div>
+        `;
     }
 
     function renderExperimentRead(experimentRead) {
@@ -355,8 +448,10 @@
         renderTextBlock,
         renderBulletList,
         normalizeSpeedReadContent,
+        normalizeTechnicalDetailRead,
         normalizeExperimentRead,
         normalizeFigureInsights,
+        renderTechnicalDetailRead,
         renderExperimentRead,
         renderFigureInsights,
     };
