@@ -113,7 +113,30 @@ def extract_page_layout_words(abs_pdf, page_no):
         "-",
     ])
     if result is None or result.returncode != 0:
-        return {"width": 0, "height": 0, "words": []}
+        doc = open_pdf_doc(abs_pdf)
+        try:
+            if page_no < 1 or page_no > len(doc):
+                return {"width": 0, "height": 0, "words": []}
+            page = doc.load_page(page_no - 1)
+            words = []
+            for item in page.get_text("words") or []:
+                try:
+                    x0, y0, x1, y1, text = item[:5]
+                    text = str(text or "").strip()
+                    if not text:
+                        continue
+                    words.append({
+                        "text": text,
+                        "x0": float(x0),
+                        "y0": float(y0),
+                        "x1": float(x1),
+                        "y1": float(y1),
+                    })
+                except (TypeError, ValueError):
+                    continue
+            return {"width": float(page.rect.width), "height": float(page.rect.height), "words": words}
+        finally:
+            doc.close()
 
     raw = result.stdout or ""
     page_match = PAGE_SIZE_RE.search(raw)
@@ -306,6 +329,43 @@ def _pdftoppm_crop_args(crop_rect, image_width):
     return ["-x", str(left), "-y", str(top), "-W", str(width), "-H", str(height)]
 
 
+def _render_crop_with_pymupdf(abs_pdf, page_no, output_path, image_width, crop_rect):
+    if fitz is None or not crop_rect:
+        return False
+    try:
+        x0 = float(crop_rect.get("x0"))
+        y0 = float(crop_rect.get("y0"))
+        x1 = float(crop_rect.get("x1"))
+        y1 = float(crop_rect.get("y1"))
+    except (TypeError, ValueError):
+        return False
+    if x1 <= x0 or y1 <= y0:
+        return False
+
+    doc = open_pdf_doc(abs_pdf)
+    try:
+        if page_no < 1 or page_no > len(doc):
+            raise RuntimeError(f"第 {page_no} 页超出 PDF 页数范围")
+        page = doc.load_page(page_no - 1)
+        clip = fitz.Rect(x0, y0, x1, y1) & page.rect
+        if clip.is_empty or clip.width <= 0 or clip.height <= 0:
+            return False
+        zoom = max(float(image_width) / max(float(clip.width), 1.0), 0.1)
+        pixmap = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), clip=clip, alpha=False)
+        if Image is not None and output_path.lower().endswith((".jpg", ".jpeg")):
+            mode = "RGB" if pixmap.n < 4 else "RGBA"
+            image = Image.frombytes(mode, (pixmap.width, pixmap.height), pixmap.samples)
+            if image.mode != "RGB":
+                image = image.convert("RGB")
+            image = _trim_white_margins(image)
+            image.save(output_path, quality=92)
+        else:
+            pixmap.save(output_path)
+    finally:
+        doc.close()
+    return os.path.exists(output_path)
+
+
 def render_page_image(abs_pdf, file_key, page_no, workspace_root, quick_reading_cache_dir, image_width, base_name=None, crop_rect=None):
     cache_dir = paper_cache_dir(file_key, workspace_root, quick_reading_cache_dir)
     os.makedirs(cache_dir, exist_ok=True)
@@ -314,6 +374,9 @@ def render_page_image(abs_pdf, file_key, page_no, workspace_root, quick_reading_
     target_jpg = os.path.join(cache_dir, safe_base_name + ".jpg")
     target_png = os.path.join(cache_dir, safe_base_name + ".png")
     prefix = os.path.join(cache_dir, safe_base_name)
+
+    if crop_rect and _render_crop_with_pymupdf(abs_pdf, page_no, target_jpg, image_width, crop_rect):
+        return os.path.relpath(target_jpg, workspace_root).replace(os.sep, "/")
 
     crop_args = _pdftoppm_crop_args(crop_rect, image_width)
     used_native_crop = bool(crop_args)

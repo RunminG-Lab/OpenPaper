@@ -58,9 +58,31 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-> **最低要求**：Python 3.8+。
+> **最低要求**：Python 3.8+。建议始终在项目 `.venv` 中启动 OpenPaper，避免误用全局 Python 导致依赖不一致。
 
-### 第三步：放入论文
+### 第三步：安装 PDF 工具链
+
+普通论文管理只需要 Python 依赖；如果要使用 AI 速读的**图表解读、PDF 截图和导出**，新机器还必须安装 Poppler 工具链。
+
+Windows 推荐使用 winget：
+
+```powershell
+winget install --id oschwartz10612.Poppler -e --accept-package-agreements --accept-source-agreements
+```
+
+macOS / Linux：
+
+```bash
+# macOS
+brew install poppler
+
+# Ubuntu / Debian
+sudo apt-get install poppler-utils
+```
+
+安装后请重新打开终端，让新的 `PATH` 生效。
+
+### 第四步：放入论文
 
 把 PDF 文件放进 `papers/` 目录下的**任意子文件夹**（子文件夹名就是分组名）：
 
@@ -75,23 +97,51 @@ papers/
     some-paper-without-category.pdf
 ```
 
-### 第四步：启动服务
+### 第五步：启动服务
 
 ```bash
+# 已激活 .venv 时（所有平台）
 python -m backend
+```
+
+```powershell
+# Windows 未激活 .venv 时，也可以显式指定
+.\.venv\Scripts\python.exe -m backend
 ```
 
 > 兼容旧用法：`python backend/server.py`、`python -m backend.server` 或 `uv run openpaper`。
 
 服务启动后会自动构建 `index.html`，并在后台监控 `papers/` 目录的变化。
 
-### 第五步：打开浏览器
+### 第六步：打开浏览器
 
 访问 **http://127.0.0.1:8000**，即可看到完整的论文管理界面。
 
+### 新机器自检
+
+如果换机器后 AI 速读没有图表解读，优先检查这里：
+
+```powershell
+# Windows：确认当前 Python 和 PDF 工具来自正确位置
+where.exe python
+where.exe pdftotext
+where.exe pdfinfo
+where.exe pdftoppm
+
+# Python 依赖应全部可导入
+python -c "import fitz, PIL, pptx; print('python deps ok')"
+
+# PDF 工具应显示 Poppler 版本
+pdftotext -v
+pdfinfo -v
+pdftoppm -v
+```
+
+`pdftotext`、`pdfinfo`、`pdftoppm` 三个命令必须都能找到。只有 Git 自带的 `pdftotext.exe` 不够用，因为它通常不支持 OpenPaper 图表定位需要的 `-bbox-layout` 能力。
+
 ---
 
-## 第六步： 后台常驻（可选；推荐）
+## 后台常驻（可选；推荐）
 
 ### Windows
 
@@ -231,11 +281,15 @@ OpenPaper/
 
 **Q：放入 PDF 后页面没有更新？**  
 A：先确认服务是通过 `python -m backend` 正在运行，再刷新浏览器；如果仍未更新，就查看 `watchdog.log`（旧版本可能仍在写 `waatchdog.log`）。
+
 **Q：会议/年份识别不对怎么办？**  
 A：点击论文卡片右上角的编辑按钮，手动修改会议、年份、标题等字段，修改后自动保存到 `papers/metadata.json`。
 
 **Q：AI 速读提示"连接失败"？**  
 A：先点击设置页的「测试连通性」，确认 Base URL 和 API Key 正确。国内网络访问 OpenAI 官方接口时可能需要代理，推荐使用 DeepSeek 或 VectorEngine 等国内接口。
+
+**Q：AI 速读生成了正文，但「图表解读」为空？**
+A：先确认生成配置里勾选了「生成图表解读」，再检查本机是否安装了完整 Poppler 工具链。运行 `pdftotext -v`、`pdfinfo -v`、`pdftoppm -v`，三个命令都应输出 Poppler 版本；如果只找到 Git/Xpdf 自带的 `pdftotext`，图表定位和截图通常会失败。修复环境后需要对该论文点击「重新生成」，已有的空图表缓存不会自动补全。
 
 **Q：多台设备共享怎么做？**  
 A：如果你本来就用 Syncthing/网盘同步 `papers/`，直接把 PDF、`papers/metadata.json` 和 `papers/stats.data.json` 一起同步即可；代码仓库本身继续单独管理，不需要把这些本地数据放进 git。
@@ -251,6 +305,9 @@ Python 依赖见 [`requirements.txt`](requirements.txt)：
 
 ```
 watchdog>=2.0
+PyMuPDF>=1.24,<2
+python-pptx>=0.6.23
+Pillow>=10
 ```
 
 AI 速读依赖以下系统级 PDF 工具：
@@ -259,13 +316,23 @@ AI 速读依赖以下系统级 PDF 工具：
 - `pdfinfo`
 - `pdftoppm`
 
-如果这些工具未安装，普通论文管理和检索仍可使用，但 AI 速读会缺少页面抽取/截图能力，或者退回到纯文本模式。
+如果这些工具未安装，普通论文管理和检索仍可使用，但 AI 速读会缺少页面抽取/截图能力，或者退回到纯文本模式，导致「图表解读」为空。
 
 常见安装方式：
 
-- Windows：安装带 Poppler 工具链的软件发行版，例如 MiKTeX，或单独安装 Poppler 并把其 `bin` 目录加入 `PATH`
+- Windows：推荐 `winget install --id oschwartz10612.Poppler -e --accept-package-agreements --accept-source-agreements`
 - macOS：`brew install poppler`
 - Ubuntu / Debian：`sudo apt-get install poppler-utils`
+
+安装完成后重新打开终端，并运行：
+
+```bash
+pdftotext -v
+pdfinfo -v
+pdftoppm -v
+```
+
+三个命令都应输出 Poppler 版本。如果只找得到 `pdftotext`，或者版本来自 Git/Xpdf，而找不到 `pdfinfo`、`pdftoppm`，AI 速读的图表截图通常无法正常生成。
 
 ---
 

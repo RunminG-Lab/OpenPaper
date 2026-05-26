@@ -18,6 +18,7 @@ from .models import (
     MISSING_TEXT,
     list_value,
     normalize_experiment_read,
+    normalize_figure_insights,
     normalize_page_refs,
     normalize_technical_detail_read,
     text_value,
@@ -217,31 +218,23 @@ def _build_experiment_section(content):
     )
 
 
-def _figure_asset_map(speed_read):
-    items = {}
-    for asset in speed_read.get("candidate_pages") or []:
-        if not isinstance(asset, dict):
-            continue
-        asset_id = str(asset.get("id") or "")
-        if asset_id:
-            items[asset_id] = asset
-    return items
-
-
 def _build_figure_section(content, speed_read, workspace_root):
     cards = []
-    asset_by_id = _figure_asset_map(speed_read)
-    for item in content.get("figure_insights") or []:
+    options = speed_read.get("options") if isinstance(speed_read.get("options"), dict) else {}
+    figure_items = normalize_figure_insights(
+        content.get("figure_insights"),
+        speed_read.get("candidate_pages") or [],
+        options.get("depth") or "standard",
+    )
+    for item in figure_items:
         if not isinstance(item, dict):
             continue
-        raw_id = str(item.get("figure_id") or item.get("id") or item.get("candidate_id") or "")
-        asset = asset_by_id.get(raw_id, {})
-        image_path = _safe_image_path(item.get("image_path") or asset.get("image_path"), workspace_root)
-        page = item.get("page") or asset.get("page") or "?"
-        label = _clean_text(item.get("label") or asset.get("label"), "关键图表")
+        image_path = _safe_image_path(item.get("image_path"), workspace_root)
+        page = item.get("page") or "?"
+        label = _clean_text(item.get("label"), "关键图表")
         cards.append(ExportCard(
             title=_clean_text(item.get("title") or label, "关键图表"),
-            paragraphs=[_clean_text(item.get("summary") or item.get("caption") or asset.get("caption"))],
+            paragraphs=[_clean_text(item.get("summary"))],
             lines=[("页码", f"Page {page}")],
             page_refs=_refs(item.get("page_refs") or [page]),
             image_path=image_path,

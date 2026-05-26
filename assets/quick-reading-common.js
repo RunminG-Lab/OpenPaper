@@ -52,6 +52,56 @@
         return String(value || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '');
     }
 
+    function figureRefKey(value) {
+        const match = /\b(Figure|Fig\.?|Table|图|表)\s*([\dIVXLC]+[A-Za-z0-9.\-]*)/i.exec(String(value || ''));
+        if (!match) return '';
+        const kind = /^table$|^表/i.test(match[1]) ? 'table' : 'figure';
+        const number = cleanMatchToken(match[2]);
+        return number ? `${kind}:${number}` : '';
+    }
+
+    function assetRefKey(asset = {}) {
+        return figureRefKey(asset.label) || figureRefKey(asset.caption);
+    }
+
+    function numberValue(value) {
+        const number = Number.parseInt(value, 10);
+        return Number.isFinite(number) && number > 0 ? number : 0;
+    }
+
+    function itemPage(item = {}) {
+        return numberValue(item.page);
+    }
+
+    function assetPage(asset = {}) {
+        return numberValue(asset.page);
+    }
+
+    function itemRefKey(item = {}) {
+        return figureRefKey(item.label) || figureRefKey(item.caption) || figureRefKey(item.title);
+    }
+
+    function assetUsed(asset = {}, usedCandidateIds) {
+        return !!(asset.id && usedCandidateIds.has(String(asset.id)));
+    }
+
+    function itemAssetConflicts(item = {}, asset = {}) {
+        const declaredPage = itemPage(item);
+        const resolvedPage = assetPage(asset);
+        if (declaredPage && resolvedPage && declaredPage !== resolvedPage) return true;
+        const declaredRef = itemRefKey(item);
+        const resolvedRef = assetRefKey(asset);
+        return !!(declaredRef && resolvedRef && declaredRef !== resolvedRef);
+    }
+
+    function captionLikeEnglishSummary(value, asset = {}) {
+        const text = textValue(value, '');
+        if (!text || /[\u4e00-\u9fff]/.test(text)) return false;
+        if (/^\s*(Figure|Fig\.?|Table)\s+[\dIVXLC]+/i.test(text)) return true;
+        const caption = textValue(asset.caption, '');
+        return !!(caption && cleanMatchToken(text) === cleanMatchToken(caption));
+    }
+
     function formatSpeedReadTime(isoStr) {
         if (!isoStr) return '时间未知';
         const date = new Date(isoStr);
@@ -237,16 +287,16 @@
 
     function compactFigureSummary(item = {}, asset = {}) {
         const direct = cleanFigureSummary(item.summary || item.interpretation || item.analysis || item.description, '');
-        if (direct) return direct;
+        if (direct && !captionLikeEnglishSummary(direct, asset)) return direct;
         const parts = [
             item.what_it_shows || item.what_to_look,
             item.how_to_read,
             item.supports_claim || item.what_it_proves,
             item.relation_to_method_or_experiment || item.why_important,
             item.misread_risks,
-        ].map(value => cleanFigureSummary(value, '')).filter(Boolean);
+        ].map(value => cleanFigureSummary(value, '')).filter(value => value && !captionLikeEnglishSummary(value, asset));
         if (parts.length) return [...new Set(parts)].join(' ');
-        return cleanFigureSummary(asset.caption || asset.excerpt, MISSING_TEXT);
+        return MISSING_TEXT;
     }
 
     function normalizeFigureInsights(speedRead) {
@@ -260,27 +310,46 @@
         const byId = new Map();
         const byPage = new Map();
         const byLabel = new Map();
+        const byRef = new Map();
         candidates.forEach(item => {
             if (!item || typeof item !== 'object') return;
             if (item.id) byId.set(String(item.id), item);
             const labelToken = cleanMatchToken(item.label || item.caption);
             if (labelToken) byLabel.set(labelToken, item);
+            const refToken = assetRefKey(item);
+            if (refToken) byRef.set(refToken, (byRef.get(refToken) || []).concat(item));
             const page = Number.parseInt(item.page, 10);
             if (Number.isFinite(page)) byPage.set(page, (byPage.get(page) || []).concat(item));
         });
 
-        let raw = Array.isArray(content.figure_insights) ? content.figure_insights : null;
-        if (!raw && Array.isArray(content.core_figures)) raw = content.core_figures;
+        let hasRawItems = Array.isArray(content.figure_insights);
+        let raw = hasRawItems ? content.figure_insights : null;
+        if (!raw && Array.isArray(content.core_figures)) {
+            hasRawItems = true;
+            raw = content.core_figures;
+        }
         if (!raw) raw = [];
 
         const usedCandidateIds = new Set();
         const matchAsset = item => {
             const rawId = item.figure_id || item.id || item.candidate_id || '';
-            if (rawId && byId.has(String(rawId))) return byId.get(String(rawId));
+            if (rawId && byId.has(String(rawId))) {
+                const asset = byId.get(String(rawId));
+                if (!assetUsed(asset, usedCandidateIds) && !itemAssetConflicts(item, asset)) return asset;
+            }
+            const refToken = itemRefKey(item);
+            const page = itemPage(item);
+            if (refToken) {
+                let refAssets = (byRef.get(refToken) || []).filter(asset => !assetUsed(asset, usedCandidateIds));
+                if (page) refAssets = refAssets.filter(asset => assetPage(asset) === page);
+                if (refAssets.length === 1) return refAssets[0];
+            }
             const labelToken = cleanMatchToken(item.label || item.caption || item.title || rawId);
-            if (labelToken && byLabel.has(labelToken)) return byLabel.get(labelToken);
+            if (labelToken && byLabel.has(labelToken)) {
+                const asset = byLabel.get(labelToken);
+                if (!assetUsed(asset, usedCandidateIds) && (!page || assetPage(asset) === page)) return asset;
+            }
             if (rawId) return {};
-            const page = Number.parseInt(item.page, 10);
             const pageAssets = Number.isFinite(page)
                 ? (byPage.get(page) || []).filter(asset => !asset.id || !usedCandidateIds.has(String(asset.id)))
                 : [];
@@ -290,28 +359,27 @@
         const normalized = raw.map(item => {
             if (!item || typeof item !== 'object') return null;
             const rawId = item.figure_id || item.id || item.candidate_id || '';
-            const page = Number.parseInt(item.page, 10);
             const asset = matchAsset(item);
             if (!asset || !Object.keys(asset).length) return null;
-            const resolvedPage = Number.isFinite(page) ? page : Number.parseInt(asset.page, 10);
+            const resolvedPage = assetPage(asset) || itemPage(item);
             const assetId = asset.id ? String(asset.id) : '';
             if (assetId) usedCandidateIds.add(assetId);
             const summary = compactFigureSummary(item, asset);
             return {
-                id: String(rawId || asset.id || ''),
+                id: String(asset.id || rawId || ''),
                 kind: asset.kind || item.kind || 'page_snapshot',
-                label: textValue(item.label || asset.label, asset.label || '关键页面'),
-                caption: textValue(item.caption || asset.caption, asset.caption || MISSING_TEXT),
-                page: Number.isFinite(resolvedPage) ? resolvedPage : '',
+                label: textValue(asset.label || item.label, asset.label || '关键页面'),
+                caption: textValue(asset.caption || item.caption, asset.caption || MISSING_TEXT),
+                page: resolvedPage || '',
                 image_path: withImageVersion(asset.image_path || item.image_path || ''),
                 confidence: asset.confidence || item.confidence || '',
                 title: textValue(item.title || item.what_it_shows || asset.reason, '关键图表页'),
                 summary,
-                page_refs: pageRefs(item.page_refs || [resolvedPage]),
+                page_refs: pageRefs([resolvedPage]),
             };
         }).filter(Boolean);
 
-        const fallbackItems = candidates
+        const fallbackItems = hasRawItems ? [] : candidates
             .filter(asset => !asset.id || !usedCandidateIds.has(String(asset.id)))
             .map((asset, index) => ({
             id: String(asset.id || `fig_${String(index + 1).padStart(3, '0')}`),
@@ -322,7 +390,7 @@
             image_path: withImageVersion(asset.image_path || ''),
             confidence: asset.confidence || '',
             title: asset.reason || asset.label || '关键图表页',
-            summary: cleanFigureSummary(asset.caption || asset.excerpt, MISSING_TEXT),
+            summary: '模型未返回该图表的中文解读，请以截图和原文图注为准。',
             page_refs: pageRefs([asset.page]),
         }));
         const merged = normalized.concat(fallbackItems);

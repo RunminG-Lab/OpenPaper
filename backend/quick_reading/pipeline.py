@@ -49,7 +49,7 @@ def generate_speedread(
     metadata_file: str,
     quick_reading_cache_dir: str,
     max_image_pages: int = 5,
-    image_width: int = 1400,
+    image_width: int = 3200,
     max_source_chars: int = 24000,
     options=None,
 ) -> _Result:

@@ -51,7 +51,12 @@ button:disabled { opacity: 0.65; cursor: wait; }
 h1 { margin: 0 0 8px; color: var(--strong); font-size: clamp(1.5rem, 2.5vw, 2.2rem); line-height: 1.25; letter-spacing: 0; }
 .meta-line { color: var(--muted); font-size: 0.94rem; line-height: 1.65; }
 .top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.top-actions .exporting { min-width: 88px; }
+.top-actions .exporting { min-width: 122px; }
+.export-menu-wrap { position: relative; }
+.export-menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 150px; padding: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); box-shadow: 0 12px 34px rgba(15, 23, 42, 0.14); }
+.export-menu-wrap.open .export-menu { display: grid; gap: 4px; }
+.export-menu button { width: 100%; text-align: left; border-color: transparent; background: transparent; }
+.export-menu button:hover { background: var(--surface-soft); }
 .content { max-width: 1180px; padding: 20px 24px 48px; }
 .section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-bottom: 16px; }
 .section h2 { margin: 0 0 12px; color: var(--strong); font-size: 1.12rem; letter-spacing: 0; }
@@ -135,8 +140,13 @@ h1 { margin: 0 0 8px; color: var(--strong); font-size: clamp(1.5rem, 2.5vw, 2.2r
             </div>
             <div class="top-actions">
                 <button id="open-pdf-btn" type="button">打开 PDF</button>
-                <button id="export-pdf-btn" type="button">导出 PDF</button>
-                <button id="export-pptx-btn" type="button">导出 PPTX</button>
+                <div id="export-menu-wrap" class="export-menu-wrap">
+                    <button id="export-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false">导出速读报告</button>
+                    <div id="export-menu" class="export-menu" role="menu">
+                        <button id="export-pdf-item" type="button" role="menuitem">导出 PDF</button>
+                        <button id="export-pptx-item" type="button" role="menuitem">导出 PPTX</button>
+                    </div>
+                </div>
                 <button id="regenerate-btn" type="button" class="primary">生成速读</button>
             </div>
         </header>
@@ -187,7 +197,7 @@ h1 { margin: 0 0 8px; color: var(--strong); font-size: clamp(1.5rem, 2.5vw, 2.2r
     </div>
 </div>
 
-<script src="assets/quick-reading-common.js?v=technical-detail-read"></script>
+<script src="assets/quick-reading-common.js?v=figure-normalize-crop-v2"></script>
 <script>
 const SPEEDREAD_CONFIG_KEY = 'papers-visualizer-speedread-config-v1';
 const THEME_KEY = 'papers-visualizer-theme-v1';
@@ -215,8 +225,10 @@ const contentEl = document.getElementById('content');
 const titleEl = document.getElementById('paper-title');
 const metaEl = document.getElementById('paper-meta');
 const openPdfBtn = document.getElementById('open-pdf-btn');
-const exportPdfBtn = document.getElementById('export-pdf-btn');
-const exportPptxBtn = document.getElementById('export-pptx-btn');
+const exportMenuWrap = document.getElementById('export-menu-wrap');
+const exportMenuBtn = document.getElementById('export-menu-btn');
+const exportPdfItem = document.getElementById('export-pdf-item');
+const exportPptxItem = document.getElementById('export-pptx-item');
 const regenerateBtn = document.getElementById('regenerate-btn');
 const generateModal = document.getElementById('speedread-generate-modal');
 const generateDepth = document.getElementById('generate-depth');
@@ -229,6 +241,7 @@ const generateProgressFill = document.getElementById('generate-progress-fill');
 const generateProgressMeta = document.getElementById('generate-progress-meta');
 const generateError = document.getElementById('generate-error');
 const generateSubmit = document.getElementById('generate-submit');
+let exportBusyFormat = '';
 
 function shadeColor(hex, percent) {
     try {
@@ -353,9 +366,38 @@ function renderHeader() {
     metaEl.textContent = metaParts.join(' · ') || '未生成速读';
     regenerateBtn.textContent = speedRead.status === 'success' ? '重新生成' : '生成速读';
     openPdfBtn.disabled = !(paper.pdf_local || paper.pdf);
-    const canExport = !!(speedRead && speedRead.status === 'success' && speedRead.content);
-    exportPdfBtn.disabled = !canExport;
-    exportPptxBtn.disabled = !canExport;
+    updateExportControls();
+}
+
+function canExportSpeedRead() {
+    return !!(state.speedRead && state.speedRead.status === 'success' && state.speedRead.content);
+}
+
+function closeExportMenu() {
+    exportMenuWrap.classList.remove('open');
+    exportMenuBtn.setAttribute('aria-expanded', 'false');
+}
+
+function toggleExportMenu() {
+    if (exportMenuBtn.disabled) return;
+    const open = !exportMenuWrap.classList.contains('open');
+    exportMenuWrap.classList.toggle('open', open);
+    exportMenuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function updateExportControls() {
+    const canExport = canExportSpeedRead();
+    const busy = !!exportBusyFormat;
+    exportMenuBtn.disabled = busy || !canExport;
+    exportPdfItem.disabled = busy || !canExport;
+    exportPptxItem.disabled = busy || !canExport;
+    exportMenuBtn.textContent = exportBusyFormat === 'pdf'
+        ? 'PDF 导出中...'
+        : exportBusyFormat === 'pptx'
+            ? 'PPTX 导出中...'
+            : '导出速读报告';
+    exportMenuBtn.classList.toggle('exporting', busy);
+    if (!canExport || busy) closeExportMenu();
 }
 
 function filenameFromDisposition(disposition, fallback) {
@@ -392,17 +434,13 @@ async function readErrorMessage(response) {
 }
 
 function setExportBusy(format, busy) {
-    const canExport = !!(state.speedRead && state.speedRead.status === 'success' && state.speedRead.content);
-    exportPdfBtn.disabled = busy || !canExport;
-    exportPptxBtn.disabled = busy || !canExport;
-    exportPdfBtn.textContent = busy && format === 'pdf' ? 'PDF 导出中...' : '导出 PDF';
-    exportPptxBtn.textContent = busy && format === 'pptx' ? 'PPTX 导出中...' : '导出 PPTX';
-    exportPdfBtn.classList.toggle('exporting', busy && format === 'pdf');
-    exportPptxBtn.classList.toggle('exporting', busy && format === 'pptx');
+    exportBusyFormat = busy ? format : '';
+    updateExportControls();
 }
 
 async function exportSpeedRead(format) {
     if (!(state.speedRead && state.speedRead.status === 'success' && state.speedRead.content)) return;
+    closeExportMenu();
     setExportBusy(format, true);
     try {
         const response = await fetch(`/api/quick-reading/export?file_key=${encodeURIComponent(fileKey)}&format=${encodeURIComponent(format)}`, { cache: 'no-store' });
@@ -605,8 +643,13 @@ openPdfBtn.addEventListener('click', () => {
     const target = paper.pdf_local || paper.pdf;
     if (target) window.open(target, '_blank');
 });
-exportPdfBtn.addEventListener('click', () => exportSpeedRead('pdf'));
-exportPptxBtn.addEventListener('click', () => exportSpeedRead('pptx'));
+exportMenuBtn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    toggleExportMenu();
+});
+exportMenuWrap.addEventListener('click', (event) => event.stopPropagation());
+exportPdfItem.addEventListener('click', () => exportSpeedRead('pdf'));
+exportPptxItem.addEventListener('click', () => exportSpeedRead('pptx'));
 regenerateBtn.addEventListener('click', () => openSpeedReadGenerateDialog(fileKey));
 document.getElementById('generate-close').addEventListener('click', closeSpeedReadGenerateDialog);
 document.getElementById('generate-cancel').addEventListener('click', closeSpeedReadGenerateDialog);
@@ -615,8 +658,12 @@ generateModal.addEventListener('click', (event) => {
     if (event.target === generateModal) closeSpeedReadGenerateDialog();
 });
 document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && generateModal.classList.contains('open')) closeSpeedReadGenerateDialog();
+    if (event.key === 'Escape') {
+        closeExportMenu();
+        if (generateModal.classList.contains('open')) closeSpeedReadGenerateDialog();
+    }
 });
+document.addEventListener('click', closeExportMenu);
 
 refreshAll();
 </script>

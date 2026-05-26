@@ -305,7 +305,7 @@ def _score_candidate_page(page_no, page_count, text, captions):
 
 
 class FigureExtractionService:
-    def __init__(self, workspace_root, quick_reading_cache_dir, image_width=1400):
+    def __init__(self, workspace_root, quick_reading_cache_dir, image_width=3200):
         self.workspace_root = workspace_root
         self.quick_reading_cache_dir = quick_reading_cache_dir
         self.image_width = image_width
