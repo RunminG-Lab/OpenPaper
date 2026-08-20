@@ -44,6 +44,7 @@ def _speedread_index_item(file_key: str, speed_read: dict, workspace_root: str, 
         "model": speed_read.get("model", ""),
         "request_mode": speed_read.get("request_mode", ""),
         "version": speed_read.get("version", 1),
+        "extractor_version": speed_read.get("extractor_version", ""),
     }
 
 

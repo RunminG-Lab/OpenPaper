@@ -848,6 +848,15 @@ applyTheme();
 
 // ===== 速读配置（仅本地浏览器持久化） =====
 const SPEEDREAD_CONFIG_KEY = 'papers-visualizer-speedread-config-v1';
+const SPEEDREAD_CACHE_VERSION = 3;
+const SPEEDREAD_EXTRACTOR_VERSION = 'caption-safe-regions-v1';
+function isCurrentSpeedReadCache(speedRead) {
+    return !!(
+        speedRead
+        && Number(speedRead.version) === SPEEDREAD_CACHE_VERSION
+        && speedRead.extractor_version === SPEEDREAD_EXTRACTOR_VERSION
+    );
+}
 const defaultSpeedReadConfig = {
     apiBaseUrl: '',
     apiKey: '',
@@ -898,7 +907,7 @@ function getSpeedReadUiState(paper) {
         return { status: 'running', icon: '⏳', statusText: '生成中...', buttonText: '生成中...', disabled: true };
     }
     const speedRead = paper.speed_read;
-    if (!speedRead || !speedRead.status) {
+    if (!speedRead || !speedRead.status || !isCurrentSpeedReadCache(speedRead)) {
         return { status: 'idle', icon: '⚡', statusText: '未生成速读', buttonText: '生成速读', disabled: false };
     }
     if (speedRead.status === 'success') {
@@ -939,7 +948,7 @@ async function readSpeedReadCacheItem(key, item) {
         const response = await fetch(`${item.path}?ts=${Date.now()}`, { cache: 'no-store' });
         if (!response.ok) return null;
         const speedRead = await response.json();
-        if (!speedRead || !speedRead.status) return null;
+        if (!speedRead || !speedRead.status || !isCurrentSpeedReadCache(speedRead)) return null;
         updatePaperSpeedRead(key, speedRead);
         return speedRead;
     } catch (_) {
@@ -972,7 +981,7 @@ async function fetchSpeedReadCache(key) {
     try {
         const response = await fetch('/api/speedread-cache?file_key=' + encodeURIComponent(key), { cache: 'no-store' });
         const data = await response.json().catch(() => ({}));
-        if (response.ok && data.ok && data.speed_read) {
+        if (response.ok && data.ok && data.speed_read && isCurrentSpeedReadCache(data.speed_read)) {
             updatePaperSpeedRead(key, data.speed_read);
             return data.speed_read;
         }
@@ -1001,6 +1010,7 @@ async function loadSpeedReadCacheStates() {
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.ok || !data.speed_reads) return;
         Object.entries(data.speed_reads).forEach(([key, speedRead]) => {
+            if (!isCurrentSpeedReadCache(speedRead)) return;
             const paper = papers.find(item => item.file_key === key);
             if (paper) paper.speed_read = speedRead;
         });
@@ -2071,7 +2081,8 @@ async function generateSpeedRead(key, { force = false, openAfterSuccess = true, 
     startSpeedReadProgressPolling(key);
     updatePaperSpeedRead(key, {
         ...(paper.speed_read || {}),
-        version: 2,
+        version: SPEEDREAD_CACHE_VERSION,
+        extractor_version: SPEEDREAD_EXTRACTOR_VERSION,
         status: 'running',
         updated_at: new Date().toISOString(),
         error: '',

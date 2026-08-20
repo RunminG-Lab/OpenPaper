@@ -165,6 +165,125 @@ def extract_page_layout_words(abs_pdf, page_no):
     return {"width": page_width, "height": page_height, "words": words}
 
 
+def _fitz_rect_payload(rect):
+    """Return a JSON-safe rectangle, or None for invalid geometry."""
+    if rect is None:
+        return None
+    try:
+        x0 = float(rect.x0)
+        y0 = float(rect.y0)
+        x1 = float(rect.x1)
+        y1 = float(rect.y1)
+    except (AttributeError, TypeError, ValueError):
+        try:
+            x0, y0, x1, y1 = (float(value) for value in rect[:4])
+        except (TypeError, ValueError):
+            return None
+    if x1 < x0:
+        x0, x1 = x1, x0
+    if y1 < y0:
+        y0, y1 = y1, y0
+    return {"x0": x0, "y0": y0, "x1": x1, "y1": y1}
+
+
+def extract_page_visual_layout(abs_pdf, page_no):
+    """Extract text and visual geometry in the same coordinate system as rendering.
+
+    This is intentionally called only for pages that already contain a selected
+    caption.  Native table detection is not used here: on borderless tables it can
+    report a single highlighted row as if it were the complete table.
+    """
+    if fitz is None:
+        return {}
+    doc = open_pdf_doc(abs_pdf)
+    try:
+        if page_no < 1 or page_no > len(doc):
+            return {}
+        page = doc.load_page(page_no - 1)
+        # Text and drawing extraction use unrotated page coordinates.  CropBox
+        # dimensions (normalized to a zero origin below) therefore match the
+        # clip coordinates even when Page.rect is width/height-swapped by a
+        # 90/270 degree rotation.
+        coordinate_width = float(page.cropbox.width)
+        coordinate_height = float(page.cropbox.height)
+
+        words = []
+        for item in page.get_text("words") or []:
+            try:
+                x0, y0, x1, y1, text = item[:5]
+                text = str(text or "").strip()
+                if not text:
+                    continue
+                words.append({
+                    "text": text,
+                    "x0": float(x0),
+                    "y0": float(y0),
+                    "x1": float(x1),
+                    "y1": float(y1),
+                })
+            except (TypeError, ValueError):
+                continue
+
+        text_blocks = []
+        for item in page.get_text("blocks") or []:
+            try:
+                rect = _fitz_rect_payload(item)
+                raw_text = str(item[4] or "")
+                text = clean_page_text(raw_text, 1000)
+            except (IndexError, TypeError, ValueError):
+                continue
+            if rect and text:
+                rect["text"] = text
+                rect["line_count"] = len([line for line in raw_text.splitlines() if line.strip()])
+                text_blocks.append(rect)
+
+        image_bboxes = []
+        try:
+            page_dict = page.get_text("dict") or {}
+        except Exception:
+            page_dict = {}
+        for block in page_dict.get("blocks") or []:
+            if not isinstance(block, dict) or block.get("type") != 1:
+                continue
+            rect = _fitz_rect_payload(block.get("bbox"))
+            if rect and rect["x1"] > rect["x0"] and rect["y1"] > rect["y0"]:
+                image_bboxes.append(rect)
+
+        drawing_rects = []
+        horizontal_rules = []
+        try:
+            drawings = page.get_drawings() or []
+        except Exception:
+            drawings = []
+        for drawing in drawings:
+            if not isinstance(drawing, dict):
+                continue
+            rect = _fitz_rect_payload(drawing.get("rect"))
+            if not rect:
+                continue
+            width = rect["x1"] - rect["x0"]
+            height = rect["y1"] - rect["y0"]
+            if width <= 0 and height <= 0:
+                continue
+            drawing_rects.append(rect)
+            if width >= coordinate_width * 0.18 and height <= 3.0:
+                horizontal_rules.append(rect)
+
+        return {
+            "width": coordinate_width,
+            "height": coordinate_height,
+            "rotation": int(page.rotation or 0),
+            "words": words,
+            "text_blocks": text_blocks,
+            "image_bboxes": image_bboxes,
+            "drawing_rects": drawing_rects,
+            "horizontal_rules": horizontal_rules,
+            "source": "pymupdf",
+        }
+    finally:
+        doc.close()
+
+
 def score_page_for_keywords(page_no, page_count, text, keywords):
     lower = (text or "").lower()
     score = 0
@@ -347,7 +466,10 @@ def _render_crop_with_pymupdf(abs_pdf, page_no, output_path, image_width, crop_r
         if page_no < 1 or page_no > len(doc):
             raise RuntimeError(f"第 {page_no} 页超出 PDF 页数范围")
         page = doc.load_page(page_no - 1)
-        clip = fitz.Rect(x0, y0, x1, y1) & page.rect
+        coordinate_bounds = fitz.Rect(0, 0, float(page.cropbox.width), float(page.cropbox.height))
+        unrotated_clip = fitz.Rect(x0, y0, x1, y1) & coordinate_bounds
+        clip = unrotated_clip * page.rotation_matrix if page.rotation else unrotated_clip
+        clip &= page.rect
         if clip.is_empty or clip.width <= 0 or clip.height <= 0:
             return False
         zoom = max(float(image_width) / max(float(clip.width), 1.0), 0.1)

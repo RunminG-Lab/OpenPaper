@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+
 from backend.utils import log
 
-from .figure_extract import FigureExtractionService
+from .figure_extract import FIGURE_EXTRACTOR_VERSION, FigureExtractionService
 from .llm_client import OpenAICompatibleClient
 from .models import (
     _Result,
@@ -21,6 +23,21 @@ from .pdf_extract import (
 )
 from .prompts import build_speedread_prompt
 from .storage import load_speedread_cache, write_speedread_cache
+
+SPEEDREAD_CACHE_VERSION = 3
+
+
+def _pdf_fingerprint(abs_pdf):
+    digest = hashlib.sha256()
+    size = 0
+    with open(abs_pdf, "rb") as file_obj:
+        while True:
+            chunk = file_obj.read(1024 * 1024)
+            if not chunk:
+                break
+            size += len(chunk)
+            digest.update(chunk)
+    return {"size": size, "sha256": digest.hexdigest()}
 
 
 def _output_token_budget(depth):
@@ -72,10 +89,20 @@ def generate_speedread(
         return _Result(404, {"ok": False, "error": f"PDF 不存在: {rel_disk}"})
 
     try:
+        pdf_fingerprint = _pdf_fingerprint(abs_pdf)
+    except Exception as exc:
+        return _Result(500, {"ok": False, "error": f"读取 PDF 指纹失败: {exc}"})
+
+    try:
         existing = load_speedread_cache(file_key, workspace_root, quick_reading_cache_dir)
     except Exception:
         existing = {}
-    if existing.get("status") == "success" and not force:
+    cache_is_current = (
+        existing.get("version") == SPEEDREAD_CACHE_VERSION
+        and existing.get("extractor_version") == FIGURE_EXTRACTOR_VERSION
+        and existing.get("pdf_fingerprint") == pdf_fingerprint
+    )
+    if existing.get("status") == "success" and cache_is_current and not force:
         return _Result(200, {"ok": True, "cached": True, "speed_read": existing})
 
     generated_at = existing.get("generated_at") or now_iso()
@@ -92,7 +119,9 @@ def generate_speedread(
         if isinstance(extra, dict):
             progress.update(extra)
         running_state = {
-            "version": 2,
+            "version": SPEEDREAD_CACHE_VERSION,
+            "extractor_version": FIGURE_EXTRACTOR_VERSION,
+            "pdf_fingerprint": pdf_fingerprint,
             "status": "running",
             "generated_at": generated_at,
             "updated_at": now_iso(),
@@ -136,7 +165,9 @@ def generate_speedread(
         write_progress("normalize", "正在整理模型输出和图表解释", 88, {"token_status": token_status})
         normalized = normalize_speedread_payload(parsed, figure_assets, generation_options.get("depth"))
         success_state = {
-            "version": 2,
+            "version": SPEEDREAD_CACHE_VERSION,
+            "extractor_version": FIGURE_EXTRACTOR_VERSION,
+            "pdf_fingerprint": pdf_fingerprint,
             "status": "success",
             "generated_at": generated_at,
             "updated_at": now_iso(),
@@ -155,6 +186,7 @@ def generate_speedread(
                     "page": item.get("page"),
                     "image_path": item.get("image_path", ""),
                     "confidence": item.get("confidence", 0),
+                    "crop_rect": item.get("crop_rect") or {},
                     "reason": item.get("reason", ""),
                 }
                 for item in figure_assets
@@ -167,7 +199,9 @@ def generate_speedread(
         return _Result(200, {"ok": True, "speed_read": success_state})
     except Exception as exc:
         error_state = {
-            "version": 2,
+            "version": SPEEDREAD_CACHE_VERSION,
+            "extractor_version": FIGURE_EXTRACTOR_VERSION,
+            "pdf_fingerprint": pdf_fingerprint,
             "status": "error",
             "generated_at": generated_at,
             "updated_at": now_iso(),

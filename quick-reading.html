@@ -200,6 +200,15 @@ h1 { margin: 0 0 8px; color: var(--strong); font-size: clamp(1.5rem, 2.5vw, 2.2r
 <script src="assets/quick-reading-common.js?v=figure-normalize-crop-v2"></script>
 <script>
 const SPEEDREAD_CONFIG_KEY = 'papers-visualizer-speedread-config-v1';
+const SPEEDREAD_CACHE_VERSION = 3;
+const SPEEDREAD_EXTRACTOR_VERSION = 'caption-safe-regions-v1';
+function isCurrentSpeedReadCache(speedRead) {
+    return !!(
+        speedRead
+        && Number(speedRead.version) === SPEEDREAD_CACHE_VERSION
+        && speedRead.extractor_version === SPEEDREAD_EXTRACTOR_VERSION
+    );
+}
 const THEME_KEY = 'papers-visualizer-theme-v1';
 const defaultTheme = {
     accent: '#4f46e5',
@@ -343,13 +352,16 @@ async function loadSpeedRead() {
     const item = state.cacheIndex[fileKey];
     if (item && item.path) {
         try {
-            state.speedRead = await fetchJson(item.path);
-            return;
+            const cached = await fetchJson(item.path);
+            if (isCurrentSpeedReadCache(cached)) {
+                state.speedRead = cached;
+                return;
+            }
         } catch (_) {}
     }
     try {
         const data = await fetchJson('/api/quick-reading?file_key=' + encodeURIComponent(fileKey));
-        if (data && data.ok && data.speed_read) state.speedRead = data.speed_read;
+        if (data && data.ok && isCurrentSpeedReadCache(data.speed_read)) state.speedRead = data.speed_read;
     } catch (_) {}
 }
 
