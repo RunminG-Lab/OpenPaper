@@ -40,7 +40,10 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 .note { background:#fff9db; border:1px solid #f2da75; border-radius:6px; padding:6px 8px; margin-top:6px; }
 .note-header { display:flex; justify-content:space-between; align-items:center; font-weight:600; color:#9c6500; }
 .note-header button { border:none; background:transparent; color:#b7791f; font-weight:600; }
-.note-content { display:none; margin-top:6px; white-space:pre-wrap; font-size:0.95em; color:#5c3d00; }
+.note-content { display:none; margin-top:6px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:0.95em; color:#5c3d00; }
+.note-content .note-link { color:var(--accent-color); background:color-mix(in srgb, var(--accent-color) 12%, transparent); border-radius:4px; padding:1px 3px; font-weight:600; text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:2px; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+.note-content .note-link:hover { background:color-mix(in srgb, var(--accent-color) 22%, transparent); color:var(--accent-color-hover); }
+.note-content .note-link:focus-visible { outline:2px solid var(--accent-color); outline-offset:2px; }
 .toolbar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
 .toolbar button { flex:none; }
 .top-tools { position:absolute; top:4px; right:44px; z-index:30; display:flex; justify-content:flex-end; }
@@ -1201,6 +1204,63 @@ function escapeHtml(str = '') {
         .replace(/'/g, '&#39;');
 }
 
+function splitNoteUrlTrailingPunctuation(rawUrl) {
+    let url = rawUrl;
+    let trailing = '';
+    const simpleTrailingPunctuation = /[.,;:!?，。；：！？、”’》」』]$/u;
+
+    while (simpleTrailingPunctuation.test(url)) {
+        trailing = url.slice(-1) + trailing;
+        url = url.slice(0, -1);
+    }
+
+    const bracketPairs = [
+        ['(', ')'], ['[', ']'], ['{', '}'],
+        ['（', '）'], ['［', '］'], ['｛', '｝'], ['【', '】'],
+    ];
+    for (const [opening, closing] of bracketPairs) {
+        while (url.endsWith(closing)) {
+            const openingCount = url.split(opening).length - 1;
+            const closingCount = url.split(closing).length - 1;
+            if (closingCount <= openingCount) break;
+            trailing = closing + trailing;
+            url = url.slice(0, -1);
+        }
+    }
+
+    return { url, trailing };
+}
+
+function renderNoteContent(note = '') {
+    const source = String(note);
+    const linkPattern = /\[([^\]\r\n]+)\]\((https?:\/\/[^\s<>"']+)\)|(https?:\/\/[^\s<>"']+)/giu;
+    let html = '';
+    let cursor = 0;
+
+    for (const match of source.matchAll(linkPattern)) {
+        html += escapeHtml(source.slice(cursor, match.index));
+
+        const isNamedLink = Boolean(match[2]);
+        const rawUrl = match[2] || match[3];
+        const { url, trailing } = isNamedLink
+            ? { url: rawUrl, trailing: '' }
+            : splitNoteUrlTrailingPunctuation(rawUrl);
+
+        try {
+            const parsedUrl = new URL(url);
+            if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('Unsupported URL protocol');
+            const label = isNamedLink ? match[1] : url;
+            html += `<a class="note-link" href="${escapeHtml(parsedUrl.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>${escapeHtml(trailing)}`;
+        } catch (_error) {
+            html += escapeHtml(match[0]);
+        }
+
+        cursor = match.index + match[0].length;
+    }
+
+    return html + escapeHtml(source.slice(cursor));
+}
+
 function initExportMenu() {
     if (!exportTrigger || !exportPanel || !exportMdBtn) return;
     exportTrigger.addEventListener('click', (event) => {
@@ -1989,7 +2049,7 @@ function createPaperCard(p, opts = {}) {
                 <span>📝 备注</span>
                 <button type="button" class="toggle-note" onclick="toggleNote(event, this)">展开</button>
             </div>
-            <div class="note-content">${escapeHtml(p.notes)}</div>
+            <div class="note-content">${renderNoteContent(p.notes)}</div>
         </div>` : ''}
 
         <div class="speedread-strip ${speedReadUi.status === 'idle' ? 'is-idle' : ''}">
@@ -2028,7 +2088,7 @@ function createPaperCard(p, opts = {}) {
                 <input value="${escapeHtml((p.tags || []).join(', '))}" placeholder="标签，逗号分隔（输入时会出现补全）" class="edit-tags" autocomplete="off">
                 <div class="tag-suggest"></div>
             </div><br>
-            <textarea class="edit-notes" placeholder="备注">${escapeHtml(p.notes)}</textarea><br>
+            <textarea class="edit-notes" placeholder="备注（支持直接粘贴网址或 [名称](https://...)）">${escapeHtml(p.notes)}</textarea><br>
             <textarea class="edit-bib" placeholder="BibTeX">${escapeHtml(p.bib)}</textarea><br>
             <button onclick="saveEdit(this, '${p.file_key}')">💾 保存</button>
         </div>
