@@ -12,7 +12,13 @@ End Function
 sScriptDir = oFso.GetParentFolderName(WScript.ScriptFullName)
 sProjectDir = oFso.GetParentFolderName(sScriptDir)
 
-sPy = sProjectDir & "\.venv\Scripts\python.exe"
+sPy = ""
+If WScript.Arguments.Count > 0 Then
+    sPy = WScript.Arguments(0)
+End If
+If Not oFso.FileExists(sPy) Then
+    sPy = sProjectDir & "\.venv\Scripts\python.exe"
+End If
 If Not oFso.FileExists(sPy) Then
     sPy = "python.exe"
 End If
