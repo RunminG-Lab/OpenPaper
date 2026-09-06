@@ -16,7 +16,7 @@ OUTPUT_HTML = "index.html"
 TEMPLATE_HTML = "template.html"
 
 COMPANION_PATTERNS = [
-    (r"(ase|icse|fse|issta|uist|chi|nips|aaai)(?:20)?(\d{2})comp", "{conf} Companion"),
+    (r"(ase|icse|fse|issta|uist|chi|nips|icml|aaai)(?:20)?(\d{2})comp", "{conf} Companion"),
 ]
 
 VENUE_PATTERNS = [
