@@ -41,6 +41,8 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 .note-header { display:flex; justify-content:space-between; align-items:center; font-weight:600; color:#9c6500; }
 .note-header button { border:none; background:transparent; color:#b7791f; font-weight:600; }
 .note-content { display:none; margin-top:6px; white-space:pre-wrap; font-size:0.95em; color:#5c3d00; }
+.note-content a, .note-content a:visited { color:#2563eb; text-decoration:underline; overflow-wrap:anywhere; }
+.note-content a:hover { color:#1d4ed8; }
 .toolbar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
 .toolbar button { flex:none; }
 .top-tools { position:absolute; top:4px; right:44px; z-index:30; display:flex; justify-content:flex-end; }
@@ -1201,6 +1203,30 @@ function escapeHtml(str = '') {
         .replace(/'/g, '&#39;');
 }
 
+function renderNoteHtml(text = '') {
+    // Escape plain text and link only web URLs, including in existing notes.
+    return String(text).split(/((?:https?:\/\/|www\.)[^\s<>"'`，。！？；：、（）【】「」]+)/gi)
+        .map((part, index) => {
+            if (index % 2 === 0) return escapeHtml(part);
+            let url = part.replace(/[.,!?;:]+$/, '');
+            const pairs = { ')': '(', ']': '[', '}': '{' };
+            while (pairs[url.slice(-1)]) {
+                const close = url.slice(-1);
+                const open = pairs[close];
+                if (url.split(close).length <= url.split(open).length) break;
+                url = url.slice(0, -1).replace(/[.,!?;:]+$/, '');
+            }
+            const href = /^www\./i.test(url) ? `https://${url}` : url;
+            try {
+                const parsed = new URL(href);
+                if (!['http:', 'https:'].includes(parsed.protocol)) return escapeHtml(part);
+            } catch {
+                return escapeHtml(part);
+            }
+            return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>${escapeHtml(part.slice(url.length))}`;
+        }).join('');
+}
+
 function initExportMenu() {
     if (!exportTrigger || !exportPanel || !exportMdBtn) return;
     exportTrigger.addEventListener('click', (event) => {
@@ -1989,7 +2015,7 @@ function createPaperCard(p, opts = {}) {
                 <span>📝 备注</span>
                 <button type="button" class="toggle-note" onclick="toggleNote(event, this)">展开</button>
             </div>
-            <div class="note-content">${escapeHtml(p.notes)}</div>
+            <div class="note-content">${renderNoteHtml(p.notes)}</div>
         </div>` : ''}
 
         <div class="speedread-strip ${speedReadUi.status === 'idle' ? 'is-idle' : ''}">
