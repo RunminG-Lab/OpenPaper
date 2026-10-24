@@ -156,7 +156,9 @@ def main() -> None:
 
         quoted_rel_path = "/".join(urllib.parse.quote(part) for part in rel_path.split("/"))
         folder_tag = rel_path.split("/")[0] if "/" in rel_path else "unsorted"
-        tags = info.get("tags") or [folder_tag]
+        tags = info.get("tags")
+        if not isinstance(tags, list):
+            tags = [folder_tag]
 
         year = info.get("year")
         venue = info.get("venue")

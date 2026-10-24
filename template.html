@@ -110,6 +110,8 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 .tag-filter-panel .tfp-item:hover { background:var(--surface-muted-bg); }
 .tag-filter-panel .tfp-item input { width:auto; margin:0; }
 .tag-filter-panel .tfp-item .tfp-count { color:#9ca3af; font-size:0.85em; margin-left:auto; }
+.tag-context-menu { position:fixed; z-index:500; max-width:calc(100vw - 16px); padding:5px; border:1px solid var(--surface-border); border-radius:8px; background:var(--surface-bg); box-shadow:0 6px 20px rgba(0,0,0,0.16); }
+.tag-context-menu button { display:block; margin:0; width:100%; text-align:left; color:#b91c1c; overflow-wrap:anywhere; }
 
 /* ===== 模态框 ===== */
 .modal-mask { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:200; align-items:flex-start; justify-content:center; padding:60px 20px; overflow:auto; }
@@ -262,6 +264,7 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
 .recycle-item .ri-type { flex:none; display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:0.75em; font-weight:700; }
 .recycle-item .ri-type.paper { background:#eef2ff; color:#4338ca; }
 .recycle-item .ri-type.speedread { background:#fff7ed; color:#c2410c; }
+.recycle-item .ri-type.tag { background:#ecfdf5; color:#047857; }
 .recycle-item .ri-meta { color:#94a3b8; font-size:0.82em; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .recycle-item button { padding:3px 8px; font-size:0.8em; margin:0; }
 .recycle-empty { color:#94a3b8; font-style:italic; padding:18px; text-align:center; }
@@ -493,7 +496,7 @@ button.toggle-on:hover { background:var(--accent-color-hover); }
                     <span class="recycle-meta" id="recycle-meta"></span>
                 </div>
                 <div id="recycle-list" class="recycle-list"><div class="recycle-empty">加载中…</div></div>
-                <div style="margin-top:8px; font-size:0.78em; color:#94a3b8;">删除的论文和速读缓存都会被移到工作区下的 <code>.recycle_bin/</code> 临时文件夹，可以随时恢复；永久删除后不可恢复。</div>
+                <div style="margin-top:8px; font-size:0.78em; color:#94a3b8;">删除的论文、速读缓存和标签都会移到工作区下的 <code>.recycle_bin/</code>；恢复标签会还原原有论文关联，永久删除后不可恢复。</div>
             </div>
         </div>
     </div>
@@ -1554,6 +1557,7 @@ async function initApp() {
     toggleUnreadBtn.addEventListener('click', toggleOnlyUnread);
 
     initTagFilterUI();
+    initTagContextMenu();
     initSettingsModal();
     speedReadCloseBtn.addEventListener('click', closeSpeedReadModal);
     speedReadDeleteBtn.addEventListener('click', () => {
@@ -1723,7 +1727,7 @@ function renderGroupMode(list) {
             <div class="group-header" onclick="toggleGroup(this)">
                 <div>
                     <span class="drag-handle" title="拖拽调整分组顺序" onclick="event.stopPropagation()">⋮⋮</span>
-                    <span class="group-title"># ${escapeHtml(tag)}</span>
+                    <span class="group-title" data-delete-tag="${escapeHtml(tag)}" title="右键删除标签"># ${escapeHtml(tag)}</span>
                     <span class="group-count">(${items.length})</span>
                 </div>
                 <button type="button">${areAllGroupsExpanded ? '折叠' : '展开'}</button>
@@ -1962,7 +1966,7 @@ function createPaperCard(p, opts = {}) {
     const tags = (p.tags || []).filter(Boolean);
     const tagsHtml = (showTags && tags.length)
         ? `<div style="margin-top:4px;">${tags.map(tag =>
-            `<span style="display:inline-block; background:#e5e7eb; color:#4b5563; padding:2px 8px; border-radius:12px; font-size:0.85em; margin-right:4px;">#${escapeHtml(tag)}</span>`
+            `<span data-delete-tag="${escapeHtml(tag)}" title="右键删除标签" style="display:inline-block; background:#e5e7eb; color:#4b5563; padding:2px 8px; border-radius:12px; font-size:0.85em; margin-right:4px;">#${escapeHtml(tag)}</span>`
           ).join('')}</div>`
         : '';
 
@@ -2828,7 +2832,7 @@ function refreshTagFilterList() {
     const items = term ? all.filter(t => t.tag.toLowerCase().includes(term)) : all;
     tagFilterList.innerHTML = items.map(t => {
         const checked = currentTagFilter.has(t.tag) ? 'checked' : '';
-        return `<label class="tfp-item">
+        return `<label class="tfp-item" data-delete-tag="${escapeHtml(t.tag)}" title="右键删除标签">
             <input type="checkbox" data-tag="${escapeHtml(t.tag)}" ${checked}>
             <span>${escapeHtml(t.tag)}</span>
             <span class="tfp-count">${t.count}</span>
@@ -3181,7 +3185,124 @@ function attachGroupDragHandlers(section) {
     });
 }
 
-// ===== 删除论文 + 回收站 =====
+// ===== 删除标签、论文 + 回收站 =====
+function initTagContextMenu() {
+    const menu = document.createElement('div');
+    menu.className = 'tag-context-menu';
+    menu.setAttribute('role', 'menu');
+    menu.hidden = true;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.setAttribute('role', 'menuitem');
+    menu.appendChild(button);
+    document.body.appendChild(menu);
+    let tag = '';
+    let previousFocus = null;
+    const close = () => { menu.hidden = true; };
+    document.addEventListener('contextmenu', event => {
+        close();
+        const target = event.target.closest('[data-delete-tag]');
+        const candidate = target?.dataset.deleteTag;
+        if (!candidate || !getAllKnownTags().includes(candidate)) return;
+        event.preventDefault();
+        tag = candidate;
+        button.textContent = `🗑️ 删除标签 “${tag}”…`;
+        menu.hidden = false;
+        menu.style.left = Math.max(8, Math.min(event.clientX, window.innerWidth - menu.offsetWidth - 8)) + 'px';
+        menu.style.top = Math.max(8, Math.min(event.clientY, window.innerHeight - menu.offsetHeight - 8)) + 'px';
+        previousFocus = target.closest('.tag-input-wrap')?.querySelector('.edit-tags') || document.activeElement;
+        button.focus();
+    });
+    menu.addEventListener('click', event => event.stopPropagation());
+    button.addEventListener('click', () => {
+        close();
+        handleDeleteTag(tag);
+    });
+    document.addEventListener('pointerdown', event => { if (!menu.contains(event.target)) close(); });
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape' || menu.hidden) return;
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+        previousFocus?.focus();
+    }, true);
+    document.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+}
+
+async function handleDeleteTag(tag) {
+    const count = papers.filter(p => (p.tags || []).includes(tag)).length;
+    if (!confirm(`删除标签 “${tag}”？\n\n将从所有论文中移除此标签（当前共 ${count} 篇），论文文件会保留。\n可在「设置 · 回收站」中恢复标签及原有论文关联。\n对应文件夹有内容时，需要先搬迁内容才能删除。`)) return;
+    try {
+        const r = await fetch('/api/delete-tag', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tag }),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || !data.ok) {
+            const message = r.status === 404 && (!data.error || data.error === '未知接口')
+                ? '正在运行的后端仍是旧版本，请重启 OpenPaper 后端后重试'
+                : (data.error || 'HTTP ' + r.status);
+            showStatus('删除标签失败：' + message, true);
+            if (r.status === 409) alert(message);
+            return;
+        }
+        await reloadAfterTagAction(tag);
+        showStatus(`标签 “${tag}” 已移到回收站，已从 ${data.affected_count} 篇论文移除`, false);
+    } catch (err) {
+        showStatus('标签操作失败，请刷新确认结果：' + err.message, true);
+    }
+}
+
+async function reloadAfterTagAction(deletedTag = '', restoredTag = '') {
+    // 保留正在编辑的内容；清理草稿中的已删除标签，避免保存时重新引入。
+    const drafts = [];
+    const openGroups = new Set([...papersContainer.querySelectorAll('.group.open')].map(el => el.dataset.tag));
+    papersContainer.querySelectorAll('.paper').forEach(card => {
+        const panel = card.querySelector('.collapse');
+        if (!panel || panel.style.display !== 'block') return;
+        drafts.push({
+            key: card.dataset.key,
+            group: card.closest('.group')?.dataset.tag,
+            fields: [...panel.querySelectorAll('input, textarea')].map(el => ({
+                selector: '.' + [...el.classList].find(name => name.startsWith('edit-')),
+                value: deletedTag && el.classList.contains('edit-tags')
+                    ? el.value.split(',').filter(t => t.trim() !== deletedTag).join(',') : el.value,
+            })),
+        });
+    });
+    const response = await fetch(`papers/metadata.json?ts=${Date.now()}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error('重新加载数据失败：HTTP ' + response.status);
+    applyMetadataMap(await response.json());
+    saveUiState();
+    await loadSpeedReadCacheStates();
+    papersContainer.querySelectorAll('.group').forEach(group => {
+        const open = openGroups.has(group.dataset.tag) || [...group.querySelectorAll('.paper')].some(card => drafts.some(draft => draft.key === card.dataset.key));
+        group.classList.toggle('open', open);
+        group.querySelector('.group-header button').textContent = open ? '折叠' : '展开';
+    });
+    papersContainer.querySelectorAll('.paper').forEach(card => {
+        const draft = drafts.find(item => item.key === card.dataset.key && item.group === card.closest('.group')?.dataset.tag)
+            || drafts.find(item => item.key === card.dataset.key);
+        if (!draft) return;
+        card.querySelector('.collapse').style.display = 'block';
+        draft.fields.forEach(field => {
+            const el = card.querySelector(field.selector);
+            if (!el) return;
+            el.value = field.value;
+            if (restoredTag && el.classList.contains('edit-tags')) {
+                const tags = papers.find(p => p.file_key === card.dataset.key)?.tags || [];
+                const draftTags = el.value.split(',').map(t => t.trim()).filter(Boolean);
+                if (tags.includes(restoredTag) && !draftTags.includes(restoredTag)) {
+                    draftTags.splice(Math.min(tags.indexOf(restoredTag), draftTags.length), 0, restoredTag);
+                    el.value = draftTags.join(', ');
+                }
+            }
+        });
+    });
+}
+
 async function handleDeletePaper(fileKey) {
     const p = papers.find(x => x.file_key === fileKey);
     const title = p ? (p.title || fileKey) : fileKey;
@@ -3257,11 +3378,11 @@ async function refreshRecycleView() {
                 <div class="ri-info">
                     <div class="ri-title-line">
                         <div class="ri-title" title="${escapeHtml(it.title || it.original_rel)}">${escapeHtml(it.title || '(无标题)')}</div>
-                        <span class="ri-type ${escapeHtml(it.item_type || 'paper')}">${it.item_type === 'speedread' ? '速读' : '论文'}</span>
+                        <span class="ri-type ${escapeHtml(it.item_type || 'paper')}">${it.item_type === 'tag' ? '标签' : it.item_type === 'speedread' ? '速读' : '论文'}</span>
                     </div>
-                    <div class="ri-meta">${escapeHtml(it.original_rel)} · 🕐 ${escapeHtml(it.deleted_at || '')}</div>
+                    <div class="ri-meta">${it.item_type === 'tag' ? `关联 ${Number(it.affected_count) || 0} 篇论文` : escapeHtml(it.original_rel)} · 🕐 ${escapeHtml(it.deleted_at || '')}</div>
                 </div>
-                <button type="button" class="ri-restore" title="恢复到原位置">♻️ 恢复</button>
+                <button type="button" class="ri-restore" title="${it.item_type === 'tag' ? '恢复标签及原有论文关联' : '恢复到原位置'}">♻️ 恢复</button>
                 <button type="button" class="ri-purge btn-danger" title="永久删除">🔥 删除</button>
             </div>
         `).join('');
@@ -3288,21 +3409,23 @@ async function recycleRestore(id, itemType = 'paper') {
             showStatus('恢复失败：' + (data.error || ('HTTP ' + r.status)), true);
             return;
         }
-        showStatus(itemType === 'speedread' ? '已恢复速读' : '已恢复论文', false);
         refreshRecycleView();
-        if (itemType === 'speedread') {
+        if (itemType === 'tag') {
+            await reloadAfterTagAction('', data.tag);
+        } else if (itemType === 'speedread') {
             if (data.file_key) delete speedReadCacheIndex[data.file_key];
             await loadMetadataViaFetch({ fallbackToEmbedded: true });
         } else {
             await reloadAfterRecycleAction();
         }
+        showStatus(itemType === 'tag' ? '已恢复标签及原有论文关联' : itemType === 'speedread' ? '已恢复速读' : '已恢复论文', false);
     } catch (err) {
         showStatus('恢复失败：' + err.message, true);
     }
 }
 
 async function recyclePurge(id, itemType = 'paper') {
-    const label = itemType === 'speedread' ? '这份速读缓存' : '这篇论文';
+    const label = itemType === 'tag' ? '这个标签的恢复记录' : itemType === 'speedread' ? '这份速读缓存' : '这篇论文';
     if (!confirm(`永久删除${label}？此操作不可撤销。`)) return;
     try {
         const r = await fetch('/api/recycle-purge', {
@@ -3403,7 +3526,7 @@ function attachTagAutocomplete(input, panel) {
             return;
         }
         panel.innerHTML = matches.map((m, i) =>
-            `<div class="ts-item" data-i="${i}"><span>${highlight(m.tag, token)}</span><span class="ts-count">${m.count}</span></div>`
+            `<div class="ts-item" data-i="${i}" data-delete-tag="${escapeHtml(m.tag)}" title="右键删除标签"><span>${highlight(m.tag, token)}</span><span class="ts-count">${m.count}</span></div>`
         ).join('');
         if (q) {
             panel.innerHTML += `<div class="ts-item" data-action="create"><span style="color:#9ca3af;">➕ 创建新标签 “${escapeHtml(token)}”</span></div>`;
@@ -3417,6 +3540,7 @@ function attachTagAutocomplete(input, panel) {
     function bindItemHandlers(token) {
         panel.querySelectorAll('.ts-item').forEach((el, i) => {
             el.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return;
                 e.preventDefault(); // 防止失焦
                 const action = el.getAttribute('data-action');
                 if (action === 'create') {

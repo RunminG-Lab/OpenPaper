@@ -17,7 +17,7 @@ if __package__ in (None, ""):
 
 from backend.utils import configure_stdio, log, resolve_workspace_root, safe_rel
 from backend.metadata import (
-    delete_paper, delete_speedread, list_recycle_bin, restore_recycle_item, purge_paper, purge_all_papers,
+    delete_paper, delete_speedread, delete_tag, list_recycle_bin, restore_recycle_item, purge_paper, purge_all_papers,
     save_metadata, update_paper, load_metadata, atomic_write_metadata,
 )
 from backend.quick_reading import (
@@ -314,6 +314,9 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/delete-speedread":
             self.handle_delete_speedread(payload)
             return
+        if parsed.path == "/api/delete-tag":
+            self.handle_delete_tag(payload)
+            return
         if parsed.path == "/api/recycle-restore":
             self.handle_recycle_restore(payload)
             return
@@ -356,6 +359,10 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
 
     def handle_recycle_list(self):
         result = list_recycle_bin(RECYCLE_DIR)
+        self._send_json(result.status, result.payload)
+
+    def handle_delete_tag(self, payload):
+        result = delete_tag(payload.get("tag"), WORKSPACE_ROOT, METADATA_FILE, RECYCLE_DIR)
         self._send_json(result.status, result.payload)
 
     def handle_recycle_restore(self, payload):

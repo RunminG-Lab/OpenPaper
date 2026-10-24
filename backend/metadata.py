@@ -114,7 +114,7 @@ def _read_recycle_info(rid: str, recycle_dir: str) -> tuple[str | None, dict | N
 
 def _recycle_item_type(info: dict | None) -> str:
     item_type = (info or {}).get("item_type")
-    if item_type in ("paper", "speedread"):
+    if item_type in ("paper", "speedread", "tag"):
         return item_type
     return "paper"
 
@@ -157,6 +157,175 @@ def _remove_speedread_index_entry(file_key: str, workspace_root: str, quick_read
 # ---------------------------------------------------------------------------
 # recycle bin operations
 # ---------------------------------------------------------------------------
+
+def _recycled_papers(recycle_dir: str):
+    if not os.path.isdir(recycle_dir):
+        return
+    for rid in os.listdir(recycle_dir):
+        item_dir, info = _read_recycle_info(rid, recycle_dir)
+        if info and _recycle_item_type(info) == "paper" and isinstance(info.get("metadata"), dict):
+            yield rid, os.path.join(item_dir, "info.json"), info
+
+
+def _tag_order_context(recycle_dir: str) -> dict:
+    """Keep original order when several tags are deleted and restored separately."""
+    orders = {}
+    for rid in sorted(os.listdir(recycle_dir)) if os.path.isdir(recycle_dir) else []:
+        _, info = _read_recycle_info(rid, recycle_dir)
+        if not info or _recycle_item_type(info) != "tag":
+            continue
+        for key, tags in (info.get("paper_tags") or {}).items():
+            orders.setdefault(key, tags)
+        for entry in (info.get("recycled_paper_tags") or {}).values():
+            orders.setdefault(entry.get("file_key"), entry.get("tags", []))
+    return orders
+
+
+def _tag_snapshot(tags: list, order: list) -> list:
+    snapshot = list(tags)
+    for value in order:
+        if value not in snapshot:
+            snapshot = _restore_tag_values(snapshot, order, value)
+    return snapshot
+
+
+def delete_tag(tag: str, workspace_root: str, metadata_file: str, recycle_dir: str) -> _Result:
+    """Remove a tag everywhere and keep its associations in the recycle bin."""
+    if not isinstance(tag, str) or not tag.strip():
+        return _Result(400, {"ok": False, "error": "缺少标签名称"})
+    meta_abs = os.path.join(workspace_root, metadata_file)
+    recycle_root = os.path.join(workspace_root, recycle_dir)
+    papers_root = os.path.join(workspace_root, "papers")
+    try:
+        folders = [os.path.join(papers_root, name) for name in os.listdir(papers_root)
+                   if name.casefold() == tag.casefold() and os.path.isdir(os.path.join(papers_root, name))]
+        blocked = [path for path in folders if os.path.islink(path) or os.listdir(path)]
+        if blocked:
+            relative = [os.path.relpath(path, workspace_root).replace(os.sep, "/") for path in blocked]
+            return _Result(409, {"ok": False, "error": f"标签“{tag}”对应的文件夹仍有内容，请先将文件夹内容搬迁后再删除标签：" + "、".join(relative), "folders": relative})
+        original_meta = load_metadata(meta_abs)
+        metadata = dict(original_meta)
+        orders = _tag_order_context(recycle_root)
+        paper_tags = {}
+        for key, entry in original_meta.items():
+            tags = entry.get("tags") if isinstance(entry, dict) else None
+            if isinstance(tags, list) and tag in tags:
+                paper_tags[key] = _tag_snapshot(tags, orders.get(key, []))
+                metadata[key] = {**entry, "tags": [value for value in tags if value != tag]}
+        recycled_tags = {}
+        changes = []
+        for rid, path, info in _recycled_papers(recycle_root):
+            entry = info["metadata"]
+            tags = entry.get("tags")
+            if isinstance(tags, list) and tag in tags:
+                key = info.get("file_key") or entry.get("file_key")
+                recycled_tags[rid] = {"file_key": key, "tags": _tag_snapshot(tags, orders.get(key, []))}
+                updated = {**info, "metadata": {**entry, "tags": [value for value in tags if value != tag]}}
+                changes.append((path, info, updated))
+        if not paper_tags and not recycled_tags and not folders:
+            return _Result(404, {"ok": False, "error": f"标签不存在：{tag}"})
+        affected = len(set(paper_tags) | {entry["file_key"] for entry in recycled_tags.values()})
+        rid = datetime.now().strftime("%Y%m%d_%H%M%S_%f") + "_tag_" + _slugify(tag)
+        item_dir = os.path.join(recycle_root, rid)
+        os.makedirs(item_dir)
+        info = {
+            "id": rid, "item_type": "tag", "tag": tag, "title": tag,
+            "deleted_at": datetime.now().isoformat(timespec="seconds"),
+            "paper_tags": paper_tags, "recycled_paper_tags": recycled_tags,
+            "removed_folders": [os.path.relpath(path, workspace_root).replace(os.sep, "/") for path in folders],
+            "affected_count": affected,
+        }
+        removed = []
+        try:
+            _atomic_write_json(info, os.path.join(item_dir, "info.json"))
+            for path in folders:
+                os.rmdir(path)  # Never remove a folder that gained contents during the operation.
+                removed.append(path)
+            for path, _, updated in changes:
+                _atomic_write_json(updated, path)
+            atomic_write_metadata(metadata, meta_abs)
+        except Exception:
+            for path in removed:
+                os.makedirs(path, exist_ok=True)
+            for path, original, _ in changes:
+                _atomic_write_json(original, path)
+            atomic_write_metadata(original_meta, meta_abs)
+            shutil.rmtree(item_dir)
+            raise
+    except Exception as exc:
+        return _Result(500, {"ok": False, "error": f"删除标签失败: {exc}"})
+    log(f"标签已移入回收站: {tag} ({affected} 篇)")
+    return _Result(200, {"ok": True, "id": rid, "item_type": "tag", "tag": tag, "title": tag, "affected_count": affected})
+
+
+def _restore_tag_values(current: list, original: list, tag: str) -> list:
+    """Restore only the deleted tag, retaining subsequent edits to other tags."""
+    restored = list(current)
+    if tag in restored:
+        return restored
+    for index, value in enumerate(original):
+        if value != tag:
+            continue
+        following = next((value for value in original[index + 1:] if value in restored), None)
+        preceding = next((value for value in reversed(original[:index]) if value in restored), None)
+        position = restored.index(following) if following is not None else (restored.index(preceding) + 1 if preceding is not None else min(index, len(restored)))
+        restored.insert(position, tag)
+    return restored
+
+
+def _restore_tag_item(item_dir: str, info: dict, workspace_root: str, metadata_file: str, recycle_dir: str) -> _Result:
+    tag = info.get("tag")
+    if not isinstance(tag, str) or not tag:
+        return _Result(500, {"ok": False, "error": "回收站标签信息损坏"})
+    meta_abs = os.path.join(workspace_root, metadata_file)
+    try:
+        original_meta = load_metadata(meta_abs)
+        metadata = dict(original_meta)
+        paper_tags = dict(info.get("paper_tags") or {})
+        recycled_tags = info.get("recycled_paper_tags") or {}
+        for entry in recycled_tags.values():
+            paper_tags.setdefault(entry.get("file_key"), entry.get("tags", []))
+        for key, original in paper_tags.items():
+            current = metadata.get(key)
+            if isinstance(current, dict):
+                tags = current.get("tags") if isinstance(current.get("tags"), list) else []
+                metadata[key] = {**current, "tags": _restore_tag_values(tags, original, tag)}
+        changes = []
+        for rid, path, saved in _recycled_papers(os.path.join(workspace_root, recycle_dir)):
+            key = saved.get("file_key") or saved["metadata"].get("file_key")
+            original = (recycled_tags.get(rid) or {}).get("tags", paper_tags.get(key))
+            if original is not None:
+                entry = saved["metadata"]
+                tags = entry.get("tags") if isinstance(entry.get("tags"), list) else []
+                updated = {**saved, "metadata": {**entry, "tags": _restore_tag_values(tags, original, tag)}}
+                changes.append((path, saved, updated))
+        folders = []
+        for relative in info.get("removed_folders") or []:
+            path = safe_rel(relative, workspace_root)
+            if not path or (os.path.exists(path) and not os.path.isdir(path)):
+                return _Result(409, {"ok": False, "error": "原标签文件夹位置已被占用"})
+            if not os.path.isdir(path):
+                folders.append(path)
+        created = []
+        try:
+            for path in folders:
+                os.makedirs(path)
+                created.append(path)
+            for path, _, updated in changes:
+                _atomic_write_json(updated, path)
+            atomic_write_metadata(metadata, meta_abs)
+        except Exception:
+            for path, original, _ in changes:
+                _atomic_write_json(original, path)
+            atomic_write_metadata(original_meta, meta_abs)
+            for path in reversed(created):
+                os.rmdir(path)
+            raise
+        shutil.rmtree(item_dir)
+    except Exception as exc:
+        return _Result(500, {"ok": False, "error": f"恢复标签失败: {exc}"})
+    return _Result(200, {"ok": True, "item_type": "tag", "tag": tag, "affected_count": info.get("affected_count", 0)})
+
 
 def delete_paper(
     file_key: str,
@@ -305,6 +474,8 @@ def list_recycle_bin(recycle_dir: str) -> _Result:
                     "deleted_at": info.get("deleted_at", ""),
                     "file_key": info.get("file_key", ""),
                     "item_type": item_type,
+                    "tag": info.get("tag", ""),
+                    "affected_count": info.get("affected_count", 0),
                 })
             except Exception:
                 continue
@@ -430,7 +601,7 @@ def restore_recycle_item(
     recycle_dir: str,
     quick_reading_cache_dir: str,
 ) -> _Result:
-    """Restore a paper or speed-read item from the recycle bin."""
+    """Restore a paper, speed-read or tag item from the recycle bin."""
     item_dir, info = _read_recycle_info(rid, recycle_dir)
     if not item_dir:
         return _Result(404, {"ok": False, "error": "回收站项目不存在"})
@@ -439,6 +610,8 @@ def restore_recycle_item(
 
     if _recycle_item_type(info) == "speedread":
         return _restore_speedread_item(item_dir, info, workspace_root, metadata_file, quick_reading_cache_dir)
+    if _recycle_item_type(info) == "tag":
+        return _restore_tag_item(item_dir, info, workspace_root, metadata_file, recycle_dir)
     return _restore_paper_item(item_dir, info, workspace_root, build_script, metadata_file)
 
 
