@@ -9,18 +9,13 @@ from urllib import error, request
 from backend.utils import log, safe_rel
 
 from .models import clean_page_text
+from .model_catalog import normalize_models_endpoint
 
 
 def normalize_chat_endpoint(base_url):
-    url = (base_url or "").strip()
-    if not url:
-        raise ValueError("未配置 API 地址")
-    url = url.rstrip("/")
-    if url.endswith("/chat/completions"):
-        return url
-    if url.endswith("/v1"):
-        return url + "/chat/completions"
-    return url + "/v1/chat/completions"
+    # Discovery and generation must preserve the same provider path prefix.
+    models_endpoint = normalize_models_endpoint(base_url)
+    return models_endpoint[:-len("/models")] + "/chat/completions"
 
 
 def _image_to_data_url(rel_path, workspace_root):

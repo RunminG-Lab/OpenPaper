@@ -25,6 +25,7 @@ from backend.quick_reading import (
     list_speedread_cache, write_speedread_cache, rebuild_speedread_index,
     export_speedread,
 )
+from backend.quick_reading.model_catalog import list_models
 from backend.watcher import PDFHandler
 
 WORKSPACE_ROOT = resolve_workspace_root()
@@ -317,6 +318,9 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/delete-tag":
             self.handle_delete_tag(payload)
             return
+        if parsed.path == "/api/list-models":
+            self.handle_list_models(payload)
+            return
         if parsed.path == "/api/recycle-restore":
             self.handle_recycle_restore(payload)
             return
@@ -430,6 +434,21 @@ class PaperRequestHandler(SimpleHTTPRequestHandler):
         api_config = payload.get("apiConfig") or {}
         result = test_speedread_config(api_config, WORKSPACE_ROOT)
         self._send_json(result.status, result.payload)
+
+    def handle_list_models(self, payload):
+        if not isinstance(payload, dict) or not isinstance(payload.get("apiConfig"), dict):
+            self._send_json(400, {"ok": False, "error": "apiConfig 格式不正确"})
+            return
+        api_config = payload["apiConfig"]
+        try:
+            result = list_models(api_config, force=payload.get("force") is True)
+            self._send_json(200, result)
+        except (ValueError, RuntimeError) as exc:
+            message = str(exc)
+            key = api_config.get("apiKey")
+            if isinstance(key, str) and key.strip():
+                message = message.replace(key.strip(), "[API Key 已隐藏]")
+            self._send_json(400 if isinstance(exc, ValueError) else 502, {"ok": False, "error": message[:600]})
 
     def handle_getlog(self, query):
         try:
