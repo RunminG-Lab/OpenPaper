@@ -5,6 +5,7 @@ import json
 import os
 import re
 from urllib import error, request
+from urllib.parse import urlsplit
 
 from backend.utils import log, safe_rel
 
@@ -119,7 +120,6 @@ def _should_fallback_to_text_only(message, has_image_inputs):
         "unsupported",
         "content",
         "messages",
-        "没有生成文本内容",
     ))
 
 
@@ -186,6 +186,12 @@ class OpenAICompatibleClient:
                 },
             ],
         }
+        if urlsplit(self.endpoint).hostname == "api.deepseek.com" and self.model in (
+            "deepseek-flash", "deepseek-v4-flash", "deepseek-v4-flash-vision-exp",
+        ):
+            # DeepSeek enables thinking by default; it shares the output budget.
+            payload["thinking"] = {"type": "disabled"}
+            log("DeepSeek Flash 速读使用非思考模式，优先输出完整 JSON")
 
         req = request.Request(
             self.endpoint,
@@ -223,9 +229,19 @@ class OpenAICompatibleClient:
             log(f"响应片段: {body[:500]}")
             raise RuntimeError(f"模型接口返回了无效 JSON，可能是错误或网关问题。详情: {clean_page_text(str(exc), 300)}")
 
+        choices = data.get("choices") if isinstance(data, dict) else None
+        choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], dict) else {}
+        finish_reason = choice.get("finish_reason")
+        if finish_reason == "length":
+            raise RuntimeError(f"模型输出达到长度上限（max_tokens={max_tokens}），最终回答未完整生成；请在设置 → 速读中读取模型能力或提高输出 token 预算，也可减少图表数量或使用简版速读。")
         content = _extract_completion_text(data)
-        if not content:
-            log(f"无法从响应中提取文本。响应结构: {json.dumps(data, ensure_ascii=False)[:500]}")
+        if not content.strip():
+            message = choice.get("message") or {}
+            reasoning = message.get("reasoning_content") if isinstance(message, dict) else None
+            if reasoning:
+                log(f"模型仅返回思考内容，未生成最终回答；结束原因: {finish_reason}")
+                raise RuntimeError("模型仅返回思考内容，未生成最终回答；请关闭思考模式或增加输出预算后重试。")
+            log(f"模型没有生成最终回答；结束原因: {finish_reason}")
             raise RuntimeError("模型接口返回成功，但没有生成文本内容")
 
         log(f"提取生成文本: {len(content)} 字符")
